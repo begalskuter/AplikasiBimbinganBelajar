@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AuthModal from '../components/AuthModal'
 
 const features = [
     {
@@ -65,6 +66,8 @@ const searchResults = [
 
 export default function LandingPage() {
     const [scrolled, setScrolled] = useState(false);
+    const [authOpen, setAuthOpen] = useState(false)
+    const [authTab, setAuthTab] = useState('login')
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -244,8 +247,8 @@ export default function LandingPage() {
                         <a href="#mapel" className="nav-link">Mata Pelajaran</a>
                     </div>
                     <div style={{ display: "flex", gap: 12, alignItems: "center", marginLeft: "auto" }}>
-                        <a href="/login" className="nav-link" style={{ color: "#185FA5", fontWeight: 600 }}>Masuk</a>
-                        <a href="/register" className="btn-primary" style={{ padding: "9px 22px", fontSize: 14 }}>Daftar Gratis</a>
+                        <button className="btn-secondary" onClick={() => { setAuthTab('login'); setAuthOpen(true) }}>Masuk</button>
+                        <button className="btn-primary" onClick={() => { setAuthTab('register'); setAuthOpen(true) }}>Daftar Gratis</button>
                     </div>
                 </div>
             </nav>
@@ -493,6 +496,7 @@ export default function LandingPage() {
                     </div>
                 </div>
             </footer>
+            <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} defaultTab={authTab} />
         </div>
     );
 }
