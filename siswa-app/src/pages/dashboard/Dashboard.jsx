@@ -16,11 +16,20 @@ const mockGuruTerbaik = [
     { id: 2, inisial: "AP", nama: "Pak Andi Prasetyo", mapel: "Fisika", rating: 4.8, kota: "Yogyakarta", jarak: "4km", warnaBg: "#B5D4F4", warnaText: "#0C447C" },
     { id: 3, inisial: "SR", nama: "Bu Sari Rahayu", mapel: "Bahasa Inggris", rating: 4.8, kota: "Sleman", jarak: "6km", warnaBg: "#9FE1CB", warnaText: "#085041" },
     { id: 4, inisial: "DH", nama: "Bu Dewi Hartini", mapel: "IPA & Biologi", rating: 4.7, kota: "Bantul", jarak: "8km", warnaBg: "#FAC775", warnaText: "#633806" },
-    // --- tambah ini ---
     { id: 5, inisial: "RP", nama: "Pak Rudi Prasetyo, M.Pd", mapel: "Matematika", rating: 4.7, kota: "Yogyakarta", jarak: "3km", warnaBg: "#B5D4F4", warnaText: "#0C447C" },
     { id: 6, inisial: "NA", nama: "Bu Nisa Aulia", mapel: "Kimia", rating: 4.6, kota: "Sleman", jarak: "5km", warnaBg: "#9FE1CB", warnaText: "#085041" },
     { id: 7, inisial: "FH", nama: "Pak Fajar Hidayat", mapel: "Fisika", rating: 4.6, kota: "Bantul", jarak: "7km", warnaBg: "#FAC775", warnaText: "#633806" },
     { id: 8, inisial: "LM", nama: "Bu Laila Munawaroh, S.Pd", mapel: "Bahasa Indonesia", rating: 4.5, kota: "Yogyakarta", jarak: "9km", warnaBg: "#185FA5", warnaText: "#fff" },
+    { id: 9, inisial: "YP", nama: "Pak Yoga Pratama", mapel: "Matematika", rating: 4.5, kota: "Sleman", jarak: "10km", warnaBg: "#B5D4F4", warnaText: "#0C447C" },
+    { id: 10, inisial: "RI", nama: "Bu Rina Indrawati, M.Pd", mapel: "Bahasa Inggris", rating: 4.5, kota: "Bantul", jarak: "11km", warnaBg: "#9FE1CB", warnaText: "#085041" },
+    { id: 11, inisial: "TS", nama: "Pak Taufik Setiawan", mapel: "Kimia", rating: 4.4, kota: "Yogyakarta", jarak: "5km", warnaBg: "#FAC775", warnaText: "#633806" },
+    { id: 12, inisial: "AS", nama: "Bu Ayu Setyaningsih", mapel: "IPA & Biologi", rating: 4.4, kota: "Sleman", jarak: "7km", warnaBg: "#185FA5", warnaText: "#fff" },
+    { id: 13, inisial: "BH", nama: "Pak Bagas Hernawan", mapel: "Fisika", rating: 4.3, kota: "Bantul", jarak: "12km", warnaBg: "#B5D4F4", warnaText: "#0C447C" },
+    { id: 14, inisial: "MR", nama: "Bu Mega Ratnasari, S.Pd", mapel: "Bahasa Indonesia", rating: 4.3, kota: "Yogyakarta", jarak: "6km", warnaBg: "#9FE1CB", warnaText: "#085041" },
+    { id: 15, inisial: "DF", nama: "Pak Dimas Firmansyah", mapel: "Matematika", rating: 4.3, kota: "Sleman", jarak: "8km", warnaBg: "#FAC775", warnaText: "#633806" },
+    { id: 16, inisial: "PN", nama: "Bu Putri Ningrum", mapel: "Kimia", rating: 4.2, kota: "Bantul", jarak: "13km", warnaBg: "#185FA5", warnaText: "#fff" },
+    { id: 17, inisial: "HW", nama: "Pak Hendra Wijaya, M.Pd", mapel: "Fisika", rating: 4.2, kota: "Yogyakarta", jarak: "4km", warnaBg: "#B5D4F4", warnaText: "#0C447C" },
+    { id: 18, inisial: "EK", nama: "Bu Eka Kurniawati", mapel: "Bahasa Inggris", rating: 4.1, kota: "Sleman", jarak: "14km", warnaBg: "#9FE1CB", warnaText: "#085041" },
 ];
 
 const mockGuruFavorit = {
