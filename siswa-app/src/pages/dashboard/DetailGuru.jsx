@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import api from '../../services/api';
+import useFavorit from '../../hooks/useFavorit';
 
 const warnaList = [
     { bg: "#185FA5", text: "#fff" },
@@ -123,17 +124,20 @@ export default function DetailGuru() {
 
     const [guru, setGuru] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [isFavorit, setIsFavorit] = useState(false);
 
     const siswa = JSON.parse(localStorage.getItem('user')) ?? {};
     const inisialSiswa = siswa?.nama_panggilan?.[0]?.toUpperCase() ?? siswa?.name?.[0]?.toUpperCase() ?? "S";
 
+    // ✅ Hook dipanggil di level komponen
+    const { favoritIds, toggle } = useFavorit();
+    const isFavorit = favoritIds.map(String).includes(String(id));
+
+    const handleToggleFavorit = () => toggle(parseInt(id));
+
     useEffect(() => {
-        // Fetch detail guru dari API
         api.get(`/guru/${id}`)
             .then(res => {
                 const data = res.data;
-                // Mapping response API ke format yang dipakai komponen
                 setGuru({
                     id: data.id,
                     nama: data.nama,
@@ -154,7 +158,6 @@ export default function DetailGuru() {
                 });
             })
             .catch(() => {
-                // Fallback ke data dari state navigasi kalau API gagal
                 const guruState = location.state?.guru;
                 if (guruState) {
                     setGuru({
@@ -170,21 +173,7 @@ export default function DetailGuru() {
                 }
             })
             .finally(() => setLoading(false));
-
-        // Cek apakah guru ini sudah difavoritkan
-        const favorit = JSON.parse(localStorage.getItem('favorit_guru') ?? '[]');
-        setIsFavorit(favorit.includes(parseInt(id)));
     }, [id]);
-
-    const handleToggleFavorit = () => {
-        const favorit = JSON.parse(localStorage.getItem('favorit_guru') ?? '[]');
-        const guruId = parseInt(id);
-        const updated = isFavorit
-            ? favorit.filter(f => f !== guruId)
-            : [...favorit, guruId];
-        localStorage.setItem('favorit_guru', JSON.stringify(updated));
-        setIsFavorit(!isFavorit);
-    };
 
     if (loading) {
         return (

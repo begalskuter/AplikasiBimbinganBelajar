@@ -15,7 +15,7 @@ class User extends Authenticatable
         'name', 'email', 'password',
         'nama_panggilan', 'tanggal_lahir', 'no_hp',
         'alamat_lengkap', 'kelurahan', 'kecamatan',
-        'kota', 'provinsi', 'role',
+        'kota', 'provinsi', 'role', 'foto_url',
     ];
 
     protected $hidden = [

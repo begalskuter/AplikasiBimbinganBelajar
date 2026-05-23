@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from '../../services/api';
+import useFavorit from '../../hooks/useFavorit';
 
 const warnaList = [
     { bg: "#185FA5", text: "#fff" },
@@ -24,17 +25,30 @@ const s = {
     btn: { background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
 };
 
-function Navbar({ siswa, onLogout }) {
+// ── Navbar — avatar & nama bisa diklik ke /profile ──
+function Navbar({ siswa, onLogout, onProfil }) {
     const inisial = siswa?.nama_panggilan?.[0]?.toUpperCase() ?? siswa?.name?.[0]?.toUpperCase() ?? "S";
     return (
         <nav style={s.navbar}>
             <div style={s.logo}>Syn<span style={{ color: "#378ADD" }}>au</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <span style={{ fontSize: 13, color: "#555" }}>
-                    Halo, <strong style={{ color: "#042C53" }}>{siswa?.nama_panggilan || siswa?.name}!</strong>
-                </span>
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#185FA5", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: "#fff" }}>
-                    {inisial}
+                {/* Klik nama atau avatar → ke halaman profil */}
+                <div
+                    onClick={onProfil}
+                    style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "4px 8px", borderRadius: 8, transition: "background 0.15s" }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#f0f5fb"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                    title="Lihat profil"
+                >
+                    <span style={{ fontSize: 13, color: "#555" }}>
+                        Halo, <strong style={{ color: "#042C53" }}>{siswa?.nama_panggilan || siswa?.name}!</strong>
+                    </span>
+                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#185FA5", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: "#fff", flexShrink: 0 }}>
+                        {siswa?.foto_url
+                            ? <img src={siswa.foto_url} alt="avatar" style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover" }} />
+                            : inisial
+                        }
+                    </div>
                 </div>
                 <button onClick={onLogout} style={{ background: "none", border: "1px solid #e0e0e0", borderRadius: 8, padding: "6px 14px", fontSize: 13, color: "#666", cursor: "pointer", fontFamily: "inherit" }}>
                     Keluar
@@ -115,7 +129,6 @@ function SesiMendatang({ jadwal, loading }) {
                 <p style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "16px 0" }}>Belum ada sesi terjadwal.</p>
             ) : (
                 jadwal.slice(0, 3).map((j, i) => {
-                    // Fix timezone issue — tambah T00:00:00 agar tidak geser 1 hari
                     const tgl = new Date(j.tanggal_mulai + 'T00:00:00');
                     return (
                         <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < Math.min(jadwal.length, 3) - 1 ? "1px solid #E6F1FB" : "none" }}>
@@ -124,7 +137,6 @@ function SesiMendatang({ jadwal, loading }) {
                                 <div style={{ fontSize: 10, color: "#888" }}>{tgl.toLocaleString("id-ID", { month: "short" })}</div>
                             </div>
                             <div style={{ flex: 1 }}>
-                                {/* Pakai j.guru.nama langsung dari response BookingController yang sudah diupdate */}
                                 <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53" }}>{j.guru?.nama ?? "Guru"}</div>
                                 <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
                                     {j.guru?.mapel} · Paket {j.paket} · {Array.isArray(j.hari_dipilih) ? j.hari_dipilih.join(", ") : j.hari_dipilih}
@@ -177,6 +189,7 @@ export default function Dashboard() {
     const [loadingJadwal, setLoadingJadwal] = useState(true);
 
     const siswa = JSON.parse(localStorage.getItem('user')) ?? {};
+    const { favoritIds } = useFavorit(); // ← dari DB, bukan localStorage
 
     useEffect(() => {
         api.get(`/guru?kota=${siswa.kota ?? ''}`)
@@ -198,27 +211,27 @@ export default function Dashboard() {
         })
         .slice(0, 4);
 
-    // Guru favorit — baca dari localStorage yang disimpan saat klik ❤️ di DetailGuru
-    const favoritIds = JSON.parse(localStorage.getItem('favorit_guru') ?? '[]');
     const guruFavorit = favoritIds.length > 0
-        ? guruList.find(g => g.id === favoritIds[favoritIds.length - 1]) ?? null
+        ? guruList.find(g => String(g.id) === String(favoritIds[favoritIds.length - 1])) ?? null
         : null;
 
-    const handleLihatProfil = (guru) => {
-        navigate(`/guru/${guru.id}`, { state: { guru } });
-    };
+    const handleLihatProfil = (guru) => navigate(`/guru/${guru.id}`, { state: { guru } });
 
     const handleLogout = async () => {
         try { await api.post('/auth/logout'); } catch (_) { }
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        localStorage.removeItem('favorit_guru');
+        // favorit_guru tidak perlu dihapus — sudah tersimpan di DB
         navigate('/');
     };
 
     return (
         <div style={s.page}>
-            <Navbar siswa={siswa} onLogout={handleLogout} />
+            <Navbar
+                siswa={siswa}
+                onLogout={handleLogout}
+                onProfil={() => navigate('/profile')}   // ← arahkan ke profil
+            />
             <div style={s.container}>
                 <div style={{ marginBottom: 28 }}>
                     <h1 style={{ fontSize: 24, fontWeight: 800, color: "#042C53", letterSpacing: "-0.5px" }}>
