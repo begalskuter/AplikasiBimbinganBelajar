@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../services/api";
 
 const inputStyle = {
   width: "100%",
@@ -100,12 +102,27 @@ function FileUploadField({ label, accept, description, icon, onChange, fileName 
 
 function LoginForm({ onSuccess }) {
   const [form, setForm] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async () => {
-    // TODO: ganti dengan API call ke Laravel
-    // const res = await api.post('/auth/login', form);
-    console.log("Login payload:", form);
-    // onSuccess(res.data.token);
+    if (!form.email || !form.password) {
+      setError("Email dan password wajib diisi");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.post("/auth/login", form);
+      localStorage.setItem("token", res.data.token);
+      onSuccess(res.data.token);
+      navigate("/dashboardguru");
+    } catch (err) {
+      setError(err.response?.data?.message || "Login gagal. Periksa kembali email dan password Anda.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -128,6 +145,11 @@ function LoginForm({ onSuccess }) {
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
       </div>
+      {error && (
+        <div style={{ color: "#D32F2F", fontSize: 13, marginBottom: 8, marginTop: 4 }}>
+          {error}
+        </div>
+      )}
       <div style={{ textAlign: "right", marginBottom: "24px" }}>
         <a href="#" style={{ fontSize: "12px", color: "#1565C0", textDecoration: "none" }}>
           Lupa password?
@@ -135,21 +157,22 @@ function LoginForm({ onSuccess }) {
       </div>
       <button
         onClick={handleSubmit}
+        disabled={loading}
         style={{
           width: "100%",
           padding: "13px",
-          background: "#1565C0",
+          background: loading ? "#ccc" : "#1565C0",
           color: "#fff",
           border: "none",
           borderRadius: "12px",
           fontSize: "15px",
           fontWeight: "700",
-          cursor: "pointer",
+          cursor: loading ? "default" : "pointer",
           fontFamily: "inherit",
           transition: "background 0.2s",
         }}
       >
-        Masuk
+        {loading ? "Memproses..." : "Masuk"}
       </button>
     </div>
   );
@@ -171,20 +194,32 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
     ijazah: null,
   });
   const [focusedField, setFocusedField] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showTNC, setShowTNC] = useState(false);
+  const [tncExpanded, setTncExpanded] = useState(false);
+  const [tncAgreed, setTncAgreed] = useState(false);
 
-  const handleSubmit = async () => {
+  const handlePreSubmit = () => {
     // Validate required fields
     const requiredFields = ['namaLengkap', 'email', 'password'];
     for (const key of requiredFields) {
       if (!form[key]) {
-        alert("Harap isi semua field yang wajib.");
+        setError("Harap isi semua field yang wajib.");
         return;
       }
     }
     if (!files.cv || !files.ktp || !files.ijazah) {
-      alert("Harap upload semua dokumen yang diperlukan (CV, KTP, Ijazah/Surat Aktif Kuliah).");
+      setError("Harap upload semua dokumen yang diperlukan (CV, KTP, Ijazah/Surat Aktif Kuliah).");
       return;
     }
+    setError("");
+    setShowTNC(true);
+  };
+
+  const handleFinalSubmit = async () => {
+    setLoading(true);
+    setError("");
 
     // Build FormData for file upload
     const formData = new FormData();
@@ -193,12 +228,20 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
       if (file) formData.append(key, file);
     });
 
-    // TODO: ganti dengan API call ke Laravel
-    // const res = await api.post('/auth/register-guru', formData);
-    console.log("Register payload:", form, files);
-
-    // Show success message
-    onRegisterSuccess();
+    try {
+      // NOTE: Sesuaikan dengan endpoint registrasi guru jika ada
+      // const res = await api.post('/auth/register-guru', formData);
+      console.log("Register payload:", form, files);
+      
+      // Simulate success for now since backend might not have this endpoint yet
+      setTimeout(() => {
+        onRegisterSuccess();
+        setLoading(false);
+      }, 1000);
+    } catch (err) {
+      setError("Gagal mendaftar. Silakan coba lagi.");
+      setLoading(false);
+    }
   };
 
   const field = (name) => ({
@@ -218,29 +261,29 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
         <div>
           <label style={labelStyle}>Nama Lengkap</label>
-          <input type="text" placeholder="Dewi Puspitasari" {...field("namaLengkap")} />
+          <input type="text" placeholder="Dewi Puspitasari" {...field("namaLengkap")} disabled={showTNC} />
         </div>
         <div>
           <label style={labelStyle}>Nama Panggilan</label>
-          <input type="text" placeholder="Dewi" {...field("namaPanggilan")} />
+          <input type="text" placeholder="Dewi" {...field("namaPanggilan")} disabled={showTNC} />
         </div>
       </div>
 
       {/* Email */}
       <div style={{ marginBottom: "14px" }}>
         <label style={labelStyle}>Email</label>
-        <input type="email" placeholder="email@contoh.com" {...field("email")} />
+        <input type="email" placeholder="email@contoh.com" {...field("email")} disabled={showTNC} />
       </div>
 
       {/* Tanggal Lahir & No HP */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
         <div>
           <label style={labelStyle}>Tanggal Lahir</label>
-          <input type="date" {...field("tanggalLahir")} />
+          <input type="date" {...field("tanggalLahir")} disabled={showTNC} />
         </div>
         <div>
           <label style={labelStyle}>No. HP</label>
-          <input type="tel" placeholder="08xx-xxxx-xxxx" {...field("noHp")} />
+          <input type="tel" placeholder="08xx-xxxx-xxxx" {...field("noHp")} disabled={showTNC} />
         </div>
       </div>
 
@@ -254,6 +297,7 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
           onChange={(e) => setForm({ ...form, alamat: e.target.value })}
           onFocus={() => setFocusedField("alamat")}
           onBlur={() => setFocusedField(null)}
+          disabled={showTNC}
           style={{
             ...inputStyle,
             resize: "none",
@@ -265,7 +309,7 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
       {/* Password */}
       <div style={{ marginBottom: "20px" }}>
         <label style={labelStyle}>Password</label>
-        <input type="password" placeholder="Min. 8 karakter" {...field("password")} />
+        <input type="password" placeholder="Min. 8 karakter" {...field("password")} disabled={showTNC} />
       </div>
 
       {/* Divider */}
@@ -289,7 +333,7 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
         description="Format: PDF atau DOC (maks. 5MB)"
         icon="📄"
         fileName={files.cv?.name}
-        onChange={(file) => setFiles({ ...files, cv: file })}
+        onChange={(file) => !showTNC && setFiles({ ...files, cv: file })}
       />
 
       {/* Scan KTP */}
@@ -299,7 +343,7 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
         description="Format: JPG, PNG, atau PDF (maks. 5MB)"
         icon="🪪"
         fileName={files.ktp?.name}
-        onChange={(file) => setFiles({ ...files, ktp: file })}
+        onChange={(file) => !showTNC && setFiles({ ...files, ktp: file })}
       />
 
       {/* Ijazah / Surat Aktif Kuliah */}
@@ -309,28 +353,84 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
         description="Format: JPG, PNG, atau PDF (maks. 5MB)"
         icon="🎓"
         fileName={files.ijazah?.name}
-        onChange={(file) => setFiles({ ...files, ijazah: file })}
+        onChange={(file) => !showTNC && setFiles({ ...files, ijazah: file })}
       />
 
-      <button
-        onClick={handleSubmit}
-        style={{
-          width: "100%",
-          padding: "13px",
-          background: "#1565C0",
-          color: "#fff",
-          border: "none",
-          borderRadius: "12px",
-          fontSize: "15px",
-          fontWeight: "700",
-          cursor: "pointer",
-          fontFamily: "inherit",
-          transition: "background 0.2s",
-          marginTop: "4px",
-        }}
-      >
-        Daftar Sekarang
-      </button>
+      {error && (
+        <div style={{ color: "#D32F2F", fontSize: 13, marginBottom: 12, marginTop: 12, textAlign: "center" }}>
+          {error}
+        </div>
+      )}
+
+      {showTNC ? (
+        <div style={{
+          marginTop: 24, padding: 18, background: '#f8fafc', 
+          border: '1px solid #e2e8f0', borderRadius: 12,
+          animation: "modalSlide 0.3s ease-out"
+        }}>
+          <h4 style={{ fontSize: 14, fontWeight: 700, color: '#042C53', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            Syarat & Ketentuan
+            <button onClick={() => setTncExpanded(!tncExpanded)} style={{ background: 'none', border: 'none', color: '#1565C0', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+              {tncExpanded ? 'Sembunyikan' : 'Lihat Detail'}
+            </button>
+          </h4>
+          
+          {tncExpanded && (
+            <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6, maxHeight: 150, overflowY: 'auto', marginBottom: 16, paddingRight: 8 }}>
+              <p style={{ marginBottom: 6 }}>1. Data yang diberikan adalah benar dan dapat dipertanggungjawabkan.</p>
+              <p style={{ marginBottom: 6 }}>2. Menyetujui kebijakan potongan biaya layanan platform sebesar 10% dari setiap transaksi.</p>
+              <p style={{ marginBottom: 6 }}>3. Bersedia menjaga nama baik Synau dan memberikan pelayanan terbaik kepada siswa.</p>
+              <p style={{ marginBottom: 6 }}>4. Synau berhak menonaktifkan akun jika ditemukan pelanggaran terhadap kode etik pengajar.</p>
+              <p style={{ marginBottom: 6 }}>5. Semua dokumen yang diunggah akan dijaga kerahasiaannya sesuai dengan Kebijakan Privasi.</p>
+            </div>
+          )}
+          
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginTop: tncExpanded ? 0 : 12, background: '#fff', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            <input 
+              type="checkbox" 
+              checked={tncAgreed} 
+              onChange={(e) => setTncAgreed(e.target.checked)}
+              style={{ marginTop: 2, width: 16, height: 16, accentColor: '#1565C0', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: 13, color: '#333', lineHeight: 1.4, fontWeight: 500 }}>
+              Saya telah membaca dan menyetujui Syarat & Ketentuan pendaftaran guru Synau.
+            </span>
+          </label>
+          
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <button onClick={() => setShowTNC(false)} disabled={loading} style={{ flex: 1, padding: '12px', background: '#fff', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Batal
+            </button>
+            <button 
+              onClick={handleFinalSubmit} 
+              disabled={!tncAgreed || loading}
+              style={{ flex: 1, padding: '12px', background: (!tncAgreed || loading) ? '#ccc' : '#1565C0', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: (!tncAgreed || loading) ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}
+            >
+              {loading ? 'Memproses...' : 'Setuju & Daftar'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={handlePreSubmit}
+          style={{
+            width: "100%",
+            padding: "13px",
+            background: "#1565C0",
+            color: "#fff",
+            border: "none",
+            borderRadius: "12px",
+            fontSize: "15px",
+            fontWeight: "700",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            transition: "background 0.2s",
+            marginTop: "12px",
+          }}
+        >
+          Daftar Sekarang
+        </button>
+      )}
     </div>
   );
 }
@@ -349,28 +449,14 @@ function SuccessMessage({ onClose }) {
         ✓
       </div>
       <h3 style={{ fontSize: 20, fontWeight: 700, color: "#042C53", marginBottom: 8 }}>
-        Pendaftaran Berhasil!
+        Data Diterima!
       </h3>
       <p style={{ fontSize: 15, color: "#666", lineHeight: 1.7, marginBottom: 8, maxWidth: 320, margin: "0 auto 8px" }}>
-        Data Anda sudah diterima.
+        Pendaftaran Anda sedang diproses.
       </p>
       <p style={{ fontSize: 14, color: "#888", lineHeight: 1.6, marginBottom: 28, maxWidth: 320, margin: "0 auto 28px" }}>
-        Silakan tunggu konfirmasi dari admin. Kami akan menghubungi Anda melalui email dalam 1-3 hari kerja.
+        Tim admin kami akan memeriksa dokumen Anda dalam 1-3 hari kerja. Silakan tunggu konfirmasi selanjutnya untuk dapat mulai mengajar.
       </p>
-      <div style={{
-        background: "#E6F1FB", borderRadius: 12, padding: "16px 20px",
-        marginBottom: 24, textAlign: "left"
-      }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#185FA5", marginBottom: 8 }}>
-          📋 Proses Selanjutnya:
-        </div>
-        <div style={{ fontSize: 13, color: "#555", lineHeight: 1.8 }}>
-          1. Admin memeriksa dokumen Anda<br />
-          2. Verifikasi data & kelengkapan<br />
-          3. Konfirmasi via email<br />
-          4. Akun aktif & siap mengajar!
-        </div>
-      </div>
       <button
         onClick={onClose}
         style={{
@@ -396,12 +482,17 @@ function SuccessMessage({ onClose }) {
 export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [showSuccess, setShowSuccess] = useState(false);
+  const navigate = useNavigate();
 
   // Sync activeTab when defaultTab changes (e.g., from navbar button)
   useEffect(() => {
     if (isOpen) {
-      setActiveTab(defaultTab);
-      setShowSuccess(false);
+      if (defaultTab === 'status') {
+        setShowSuccess(true);
+      } else {
+        setActiveTab(defaultTab);
+        setShowSuccess(false);
+      }
     }
   }, [isOpen, defaultTab]);
 
@@ -490,7 +581,9 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
           </button>
 
           {showSuccess ? (
-            <SuccessMessage onClose={onClose} />
+            <SuccessMessage 
+              onClose={onClose} 
+            />
           ) : (
             <>
               {/* Header */}
@@ -520,7 +613,10 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
               ) : (
                 <RegisterForm
                   onSuccess={(token) => { console.log("token:", token); onClose(); }}
-                  onRegisterSuccess={() => setShowSuccess(true)}
+                  onRegisterSuccess={() => {
+                    localStorage.setItem('registration_pending', 'true');
+                    setShowSuccess(true);
+                  }}
                 />
               )}
             </>
