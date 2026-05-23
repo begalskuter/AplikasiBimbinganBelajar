@@ -1,0 +1,115 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Guru;
+use Illuminate\Http\Request;
+
+class GuruController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Guru::with('user');
+
+        // Filter by kota
+        if ($request->kota) {
+            $query->whereHas('user', fn($q) => $q->where('kota', $request->kota));
+        }
+
+        // Filter by mapel
+        if ($request->mapel) {
+            $query->where('mata_pelajaran', 'like', '%' . $request->mapel . '%');
+        }
+
+        // Search by nama
+        if ($request->search) {
+            $query->whereHas('user', fn($q) => $q->where('name', 'like', '%' . $request->search . '%'));
+        }
+
+        // Sort
+        $sort = $request->sort ?? 'rating';
+        if ($sort === 'rating') $query->orderBy('rating', 'desc');
+        if ($sort === 'nama') $query->whereHas('user', fn($q) => $q->orderBy('name'));
+
+        $gurus = $query->get()->map(fn($g) => $this->format($g));
+
+        return response()->json($gurus);
+    }
+
+    public function show($id)
+    {
+        $guru = Guru::with('user')->findOrFail($id);
+        return response()->json($this->format($guru, detail: true));
+    }
+
+    public function bookedSlots(Request $request, $id)
+    {
+        $guru = Guru::findOrFail($id);
+        $hari = $request->hari;
+
+        // Ambil slot yang sudah dibooking untuk hari tertentu
+        $booked = $guru->bookings()
+            ->where('status', '!=', 'cancelled')
+            ->get()
+            ->filter(fn($b) => in_array($hari, $b->hari_dipilih))
+            ->map(fn($b) => $b->waktu_mulai[$hari] ?? null)
+            ->filter()
+            ->values();
+
+        return response()->json(['booked_slots' => $booked]);
+    }
+
+    private function format(Guru $g, bool $detail = false): array
+    {
+        $data = [
+            'id'             => $g->id,
+            'nama'           => $g->user->name,
+            'email'          => $g->user->email,
+            'kota'           => $g->user->kota,
+            'mapel'          => $g->mata_pelajaran[0] ?? '',
+            'mata_pelajaran' => $g->mata_pelajaran,
+            'jadwal'         => $g->jadwal,
+            'rating'         => $g->rating,
+            'terverifikasi'  => $g->terverifikasi,
+            'harga'          => [
+                'mingguan'       => $g->harga_mingguan,
+                'bulanan'        => $g->harga_bulanan,
+                'sesiPerMinggu'  => 2,
+                'menitPerSesi'   => $g->menit_per_sesi,
+            ],
+        ];
+
+        if ($detail) {
+            $data['bio']          = $g->bio;
+            $data['total_siswa']  = $g->total_siswa;
+            $data['kepuasan']     = 95;
+            $data['slot_jam']     = $g->slot_jam;
+        }
+
+        return $data;
+    }
+    public function uploadDokumen(Request $request, $id)
+    {
+        $request->validate([
+            'cv'      => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'ktp'     => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'ijazah'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+        ]);
+
+        $guru = Guru::findOrFail($id);
+
+        if ($request->hasFile('cv')) {
+            $guru->cv_path = $request->file('cv')->store('dokumen-guru/cv', 'public');
+        }
+        if ($request->hasFile('ktp')) {
+            $guru->ktp_path = $request->file('ktp')->store('dokumen-guru/ktp', 'public');
+        }
+        if ($request->hasFile('ijazah')) {
+            $guru->ijazah_path = $request->file('ijazah')->store('dokumen-guru/ijazah', 'public');
+        }
+
+        $guru->save();
+
+        return response()->json(['message' => 'Dokumen berhasil diupload', 'guru' => $guru]);
+    }
+}
