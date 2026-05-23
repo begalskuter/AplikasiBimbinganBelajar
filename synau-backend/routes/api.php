@@ -6,6 +6,7 @@ use App\Http\Controllers\GuruController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\FavoritController;
+use App\Http\Controllers\RegisterGuruController;
 
 // Public routes
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -16,6 +17,8 @@ Route::get('/guru',           [GuruController::class, 'index']);
 Route::get('/guru/{id}',      [GuruController::class, 'show']);
 Route::get('/guru/{id}/booked-slots', [GuruController::class, 'bookedSlots']);
 Route::post('/guru/{id}/dokumen', [GuruController::class, 'uploadDokumen']);
+
+Route::post('/auth/register-guru', [RegisterGuruController::class, 'register']);
 
 // Protected routes (butuh login)
 Route::middleware('auth:sanctum')->group(function () {
