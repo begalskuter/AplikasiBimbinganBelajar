@@ -1,67 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
+import api from '../../services/api';
 
-// ============================================================
-// MOCK DATA — nanti ganti dengan API call ke Laravel
-// GET /api/guru/:id
-// ============================================================
-const mockDetailGuru = {
-    1: {
-        id: 1, inisial: "BW", nama: "Bu Wulandari, S.Pd", mapel: "Matematika",
-        kota: "Yogyakarta", rating: 4.9, totalUlasan: 48, totalSiswa: 120, kepuasan: 98,
-        terverifikasi: true,
-        bio: "Saya adalah guru matematika berpengalaman dengan lebih dari 5 tahun mengajar di tingkat SMP dan SMA. Metode saya berfokus pada pemahaman konsep dasar sebelum masuk ke soal yang lebih kompleks. Saya percaya setiap siswa bisa mahir matematika dengan pendekatan yang tepat dan sabar.",
-        mataPelajaran: ["Matematika SMP", "Matematika SMA", "Aljabar", "Kalkulus Dasar", "Statistika"],
-        jadwal: ["Senin", "Rabu", "Jumat", "Sabtu"],
-        harga: { mingguan: 150000, bulanan: 500000, sesiPerMinggu: 2, menitPerSesi: 90 },
-        ulasan: [
-            { id: 1, inisial: "AR", nama: "Andi Rahmawan", waktu: "2 minggu lalu", bintang: 5, warnaBg: "#B5D4F4", warnaText: "#0C447C", komentar: "Bu Wulan sabar banget ngajarin dan cara menjelaskannya mudah dipahami. Nilai matematika saya naik signifikan setelah 2 bulan les!" },
-            { id: 2, inisial: "DP", nama: "Dina Pratiwi", waktu: "1 bulan lalu", bintang: 5, warnaBg: "#9FE1CB", warnaText: "#085041", komentar: "Penjelasannya sistematis dan selalu kasih latihan soal yang relevan. Recommended banget!" },
-            { id: 3, inisial: "RS", nama: "Rizky Santoso", waktu: "2 bulan lalu", bintang: 4, warnaBg: "#FAC775", warnaText: "#633806", komentar: "Guru yang sangat sabar dan bisa menyesuaikan metode belajar dengan kemampuan siswa." },
-        ],
-        warnaBg: "#185FA5", warnaText: "#fff",
-    },
-    2: {
-        id: 2, inisial: "AP", nama: "Pak Andi Prasetyo", mapel: "Fisika",
-        kota: "Yogyakarta", rating: 4.8, totalUlasan: 35, totalSiswa: 95, kepuasan: 96,
-        terverifikasi: true,
-        bio: "Guru fisika lulusan UGM dengan pengalaman mengajar 4 tahun. Saya menggunakan pendekatan eksperimen dan visualisasi agar konsep fisika lebih mudah dipahami. Spesialisasi di fisika SMA dan persiapan UTBK.",
-        mataPelajaran: ["Fisika SMA", "Fisika Dasar", "Mekanika", "Termodinamika", "Persiapan UTBK"],
-        jadwal: ["Selasa", "Kamis", "Sabtu", "Minggu"],
-        harga: { mingguan: 140000, bulanan: 480000, sesiPerMinggu: 2, menitPerSesi: 90 },
-        ulasan: [
-            { id: 1, inisial: "BK", nama: "Bima Kurniawan", waktu: "1 minggu lalu", bintang: 5, warnaBg: "#B5D4F4", warnaText: "#0C447C", komentar: "Pak Andi ngajarnya asik, fisika yang tadinya susah jadi masuk akal!" },
-            { id: 2, inisial: "LN", nama: "Laras Ningrum", waktu: "3 minggu lalu", bintang: 5, warnaBg: "#9FE1CB", warnaText: "#085041", komentar: "Persiapan UTBK fisika saya jauh lebih siap setelah belajar sama Pak Andi." },
-        ],
-        warnaBg: "#B5D4F4", warnaText: "#0C447C",
-    },
-};
+const warnaList = [
+    { bg: "#185FA5", text: "#fff" },
+    { bg: "#B5D4F4", text: "#0C447C" },
+    { bg: "#9FE1CB", text: "#085041" },
+    { bg: "#FAC775", text: "#633806" },
+];
+const getWarna = (index) => warnaList[(index ?? 0) % warnaList.length];
+const getInisial = (nama) => nama?.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase() ?? "?";
 
-// Fallback untuk guru yang belum ada mock detail-nya
-const mockFallback = (guru) => ({
-    ...guru,
-    totalUlasan: 20, totalSiswa: 60, kepuasan: 95,
-    terverifikasi: true,
-    bio: `${guru.nama} adalah pengajar ${guru.mapel} berpengalaman di ${guru.kota}. Menggunakan metode yang menyenangkan dan mudah dipahami untuk semua tingkatan.`,
-    mataPelajaran: [guru.mapel, `${guru.mapel} Dasar`, `${guru.mapel} Lanjutan`],
-    jadwal: ["Senin", "Rabu", "Jumat"],
-    harga: { mingguan: 120000, bulanan: 400000, sesiPerMinggu: 2, menitPerSesi: 90 },
-    ulasan: [
-        { id: 1, inisial: "AS", nama: "Andi Setiawan", waktu: "1 bulan lalu", bintang: 5, warnaBg: "#B5D4F4", warnaText: "#0C447C", komentar: "Guru yang sangat baik dan sabar. Materi disampaikan dengan jelas!" },
-    ],
-});
-
-// ============================================================
-// STYLES
-// ============================================================
 const s = {
     page: { background: "#f5f8ff", minHeight: "100vh", fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif" },
     navbar: { background: "#fff", borderBottom: "1px solid #E6F1FB", padding: "0 28px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 },
     logo: { fontWeight: 800, fontSize: 20, color: "#0C447C" },
-    avatar: (bg, color, size = 34) => ({ width: size, height: size, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size * 0.38, color: color, flexShrink: 0 }),
     card: { background: "#fff", border: "1px solid #E6F1FB", borderRadius: 16, padding: 24, marginBottom: 20 },
     badge: (bg, color) => ({ display: "inline-flex", alignItems: "center", gap: 4, background: bg, color: color, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100 }),
     chip: { display: "inline-flex", alignItems: "center", background: "#f0f4ff", color: "#185FA5", fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 8, margin: "4px" },
+    avatarBox: (bg, color, size) => ({ width: size, height: size, borderRadius: "50%", background: bg, color: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size * 0.35, flexShrink: 0 }),
 };
 
 function Bintang({ jumlah }) {
@@ -72,100 +29,170 @@ function Bintang({ jumlah }) {
     );
 }
 
-function BookingCard({ guru }) {
+function BookingCard({ guru, isFavorit, onToggleFavorit }) {
     const navigate = useNavigate();
     const [paket, setPaket] = useState("mingguan");
 
-    const harga = paket === "mingguan" ? guru.harga.mingguan : guru.harga.bulanan;
-    const hargaFormatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(harga);
+    const harga = paket === "mingguan" ? guru.harga?.mingguan : guru.harga?.bulanan;
+    const hargaFormatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(harga ?? 0);
 
     const handleBooking = () => {
-        navigate(`/booking/${guru.id}`, {
-            state: { guru, paket },
-        });
+        navigate(`/booking/${guru.id}`, { state: { guru, paket } });
     };
 
     return (
-        <div style={{ ...s.card, position: "sticky", top: 80, marginBottom: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 16 }}>Pilih Paket</div>
+        <div>
+            {/* BOOKING CARD */}
+            <div style={{ ...s.card, position: "sticky", top: 80, marginBottom: 16 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 16 }}>Pilih Paket</div>
 
-            {/* Toggle paket */}
-            <div style={{ display: "flex", background: "#f0f4ff", borderRadius: 10, padding: 4, marginBottom: 16 }}>
-                {["mingguan", "bulanan"].map((p) => (
-                    <div
-                        key={p}
-                        onClick={() => setPaket(p)}
-                        style={{
-                            flex: 1, padding: "8px", borderRadius: 8, textAlign: "center",
-                            fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.2s",
-                            background: paket === p ? "#185FA5" : "transparent",
-                            color: paket === p ? "#fff" : "#185FA5",
-                        }}
-                    >
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
-                    </div>
-                ))}
-            </div>
-
-            {/* Harga */}
-            <div style={{ background: "#E6F1FB", borderRadius: 12, padding: 16, marginBottom: 16, textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#185FA5", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>
-                    Harga {paket}
-                </div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: "#042C53" }}>{hargaFormatted}</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
-                    {guru.harga.sesiPerMinggu}x sesi / {paket === "mingguan" ? "minggu" : "bulan"} · {guru.harga.menitPerSesi} menit/sesi
-                </div>
-            </div>
-
-            {/* Jadwal tersedia — read only */}
-            <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53", marginBottom: 6 }}>Jadwal Tersedia</div>
-                <div style={{ fontSize: 11, color: "#888", marginBottom: 10 }}>Pilihan hari bisa diatur saat booking</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {guru.jadwal.map((hari) => (
-                        <div
-                            key={hari}
-                            style={{
-                                padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                                border: "1.5px solid #B5D4F4", background: "#E6F1FB", color: "#185FA5",
-                            }}
-                        >
-                            {hari}
+                {/* Toggle paket */}
+                <div style={{ display: "flex", background: "#f0f4ff", borderRadius: 10, padding: 4, marginBottom: 16 }}>
+                    {["mingguan", "bulanan"].map((p) => (
+                        <div key={p} onClick={() => setPaket(p)} style={{ flex: 1, padding: "8px", borderRadius: 8, textAlign: "center", fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", background: paket === p ? "#185FA5" : "transparent", color: paket === p ? "#fff" : "#185FA5" }}>
+                            {p.charAt(0).toUpperCase() + p.slice(1)}
                         </div>
                     ))}
                 </div>
+
+                {/* Harga */}
+                <div style={{ background: "#E6F1FB", borderRadius: 12, padding: 16, marginBottom: 16, textAlign: "center" }}>
+                    <div style={{ fontSize: 11, color: "#185FA5", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Harga {paket}</div>
+                    <div style={{ fontSize: 26, fontWeight: 800, color: "#042C53" }}>{hargaFormatted}</div>
+                    <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
+                        {guru.harga?.sesiPerMinggu ?? 2}x sesi / {paket === "mingguan" ? "minggu" : "bulan"} · {guru.harga?.menitPerSesi ?? 90} menit/sesi
+                    </div>
+                </div>
+
+                {/* Jadwal tersedia — read only */}
+                <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53", marginBottom: 6 }}>Jadwal Tersedia</div>
+                    <div style={{ fontSize: 11, color: "#888", marginBottom: 10 }}>Pilihan hari bisa diatur saat booking</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {(guru.jadwal ?? []).map((hari) => (
+                            <div key={hari} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "1.5px solid #B5D4F4", background: "#E6F1FB", color: "#185FA5" }}>
+                                {hari}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Tombol Booking */}
+                <button onClick={handleBooking} style={{ width: "100%", padding: 13, background: "#185FA5", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 }}>
+                    Booking Sekarang
+                </button>
+
+                {/* Tombol Favorit */}
+                <button
+                    onClick={onToggleFavorit}
+                    style={{ width: "100%", padding: 11, background: isFavorit ? "#FEF3E2" : "none", border: `1px solid ${isFavorit ? "#FAC775" : "#B5D4F4"}`, borderRadius: 12, fontSize: 13, fontWeight: 600, color: isFavorit ? "#633806" : "#185FA5", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}
+                >
+                    {isFavorit ? "❤️ Tersimpan sebagai Favorit" : "🤍 Tambah ke Favorit"}
+                </button>
             </div>
 
-            {/* Tombol */}
-            <button
-                onClick={handleBooking}
-                style={{ width: "100%", padding: 13, background: "#185FA5", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 }}
-            >
-                Booking Sekarang
-            </button>
-            <button
-                style={{ width: "100%", padding: 11, background: "none", border: "1px solid #B5D4F4", borderRadius: 12, fontSize: 13, fontWeight: 600, color: "#185FA5", cursor: "pointer", fontFamily: "inherit" }}
-            >
-                💬 Hubungi Guru
-            </button>
+            {/* KONTAK PENGADUAN */}
+            <div style={{ background: "#fff", border: "1px solid #E6F1FB", borderRadius: 16, padding: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53", marginBottom: 12 }}>📞 Butuh Bantuan?</div>
+                <p style={{ fontSize: 12, color: "#888", lineHeight: 1.6, marginBottom: 12 }}>
+                    Ada masalah dengan guru atau proses booking? Hubungi layanan pengaduan kami.
+                </p>
+                <a
+                    href="https://wa.me/6281234567890?text=Halo%20Synau%2C%20saya%20ingin%20melaporkan%20masalah..."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#E9F7EF", border: "1px solid #A9DFBF", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "#1D6A39", textDecoration: "none", marginBottom: 8 }}
+                >
+                    <span>💬</span> WhatsApp: 0812-3456-7890
+                </a>
+                <a
+                    href="mailto:pengaduan@synau.id"
+                    style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#EBF5FB", border: "1px solid #AED6F1", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "#1A5276", textDecoration: "none" }}
+                >
+                    <span>📧</span> pengaduan@synau.id
+                </a>
+            </div>
         </div>
     );
 }
 
-// ============================================================
-// MAIN COMPONENT
-// ============================================================
 export default function DetailGuru() {
     const navigate = useNavigate();
     const { id } = useParams();
     const location = useLocation();
 
-    // Ambil data guru — dari state navigasi atau dari mock data
-    // Nanti ganti dengan: useEffect(() => { axios.get(`/api/guru/${id}`).then(...) }, [id])
-    const guruDariState = location.state?.guru;
-    const guruDariMock = mockDetailGuru[parseInt(id)];
-    const guru = guruDariMock ?? (guruDariState ? mockFallback(guruDariState) : null);
+    const [guru, setGuru] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isFavorit, setIsFavorit] = useState(false);
+
+    const siswa = JSON.parse(localStorage.getItem('user')) ?? {};
+    const inisialSiswa = siswa?.nama_panggilan?.[0]?.toUpperCase() ?? siswa?.name?.[0]?.toUpperCase() ?? "S";
+
+    useEffect(() => {
+        // Fetch detail guru dari API
+        api.get(`/guru/${id}`)
+            .then(res => {
+                const data = res.data;
+                // Mapping response API ke format yang dipakai komponen
+                setGuru({
+                    id: data.id,
+                    nama: data.nama,
+                    mapel: data.mata_pelajaran?.[0] ?? data.mapel,
+                    mataPelajaran: data.mata_pelajaran ?? [],
+                    kota: data.kota,
+                    rating: data.rating,
+                    totalUlasan: data.total_ulasan ?? 0,
+                    totalSiswa: data.total_siswa ?? 0,
+                    kepuasan: data.kepuasan ?? 95,
+                    terverifikasi: data.terverifikasi,
+                    bio: data.bio,
+                    jadwal: data.jadwal ?? [],
+                    harga: data.harga ?? { mingguan: 0, bulanan: 0, sesiPerMinggu: 2, menitPerSesi: 90 },
+                    ulasan: data.ulasan ?? [],
+                    warnaBg: getWarna(data.id).bg,
+                    warnaText: getWarna(data.id).text,
+                });
+            })
+            .catch(() => {
+                // Fallback ke data dari state navigasi kalau API gagal
+                const guruState = location.state?.guru;
+                if (guruState) {
+                    setGuru({
+                        ...guruState,
+                        mataPelajaran: guruState.mata_pelajaran ?? [guruState.mapel],
+                        totalUlasan: 0, totalSiswa: guruState.total_siswa ?? 0, kepuasan: 95,
+                        bio: `${guruState.nama} adalah pengajar ${guruState.mapel} berpengalaman di ${guruState.kota}.`,
+                        harga: guruState.harga ?? { mingguan: 120000, bulanan: 400000, sesiPerMinggu: 2, menitPerSesi: 90 },
+                        ulasan: [],
+                        warnaBg: getWarna(guruState.id).bg,
+                        warnaText: getWarna(guruState.id).text,
+                    });
+                }
+            })
+            .finally(() => setLoading(false));
+
+        // Cek apakah guru ini sudah difavoritkan
+        const favorit = JSON.parse(localStorage.getItem('favorit_guru') ?? '[]');
+        setIsFavorit(favorit.includes(parseInt(id)));
+    }, [id]);
+
+    const handleToggleFavorit = () => {
+        const favorit = JSON.parse(localStorage.getItem('favorit_guru') ?? '[]');
+        const guruId = parseInt(id);
+        const updated = isFavorit
+            ? favorit.filter(f => f !== guruId)
+            : [...favorit, guruId];
+        localStorage.setItem('favorit_guru', JSON.stringify(updated));
+        setIsFavorit(!isFavorit);
+    };
+
+    if (loading) {
+        return (
+            <div style={{ ...s.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ fontSize: 14, color: "#888" }}>Memuat profil guru...</div>
+            </div>
+        );
+    }
 
     if (!guru) {
         return (
@@ -173,9 +200,7 @@ export default function DetailGuru() {
                 <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: "#042C53" }}>Guru tidak ditemukan</div>
-                    <button onClick={() => navigate(-1)} style={{ marginTop: 16, padding: "8px 20px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "inherit" }}>
-                        Kembali
-                    </button>
+                    <button onClick={() => navigate(-1)} style={{ marginTop: 16, padding: "8px 20px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "inherit" }}>Kembali</button>
                 </div>
             </div>
         );
@@ -183,30 +208,25 @@ export default function DetailGuru() {
 
     return (
         <div style={s.page}>
-            {/* NAVBAR */}
             <nav style={s.navbar}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <button
-                        onClick={() => navigate(-1)}
-                        style={{ background: "none", border: "1px solid #B5D4F4", borderRadius: 8, cursor: "pointer", color: "#185FA5", fontSize: 13, fontWeight: 600, padding: "7px 14px", fontFamily: "inherit" }}
-                    >
+                    <button onClick={() => navigate(-1)} style={{ background: "none", border: "1px solid #B5D4F4", borderRadius: 8, cursor: "pointer", color: "#185FA5", fontSize: 13, fontWeight: 600, padding: "7px 14px", fontFamily: "inherit" }}>
                         ← Kembali
                     </button>
                     <div style={s.logo}>Syn<span style={{ color: "#378ADD" }}>au</span></div>
                 </div>
-                <div style={{ ...s.avatar("#185FA5", "#fff"), fontSize: 13, fontWeight: 700 }}>BS</div>
+                <div style={s.avatarBox("#185FA5", "#fff", 34)}>{inisialSiswa}</div>
             </nav>
 
             <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px", display: "grid", gridTemplateColumns: "1fr 300px", gap: 24, alignItems: "start" }}>
 
                 {/* KOLOM KIRI */}
                 <div>
-
                     {/* Header profil */}
                     <div style={s.card}>
                         <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 20 }}>
-                            <div style={s.avatar(guru.warnaBg, guru.warnaText, 80)}>
-                                {guru.inisial}
+                            <div style={s.avatarBox(guru.warnaBg, guru.warnaText, 80)}>
+                                {getInisial(guru.nama)}
                             </div>
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: 22, fontWeight: 800, color: "#042C53", letterSpacing: "-0.5px" }}>{guru.nama}</div>
@@ -218,12 +238,8 @@ export default function DetailGuru() {
                                 </div>
                             </div>
                         </div>
-                        {/* Statistik */}
                         <div style={{ display: "flex", gap: 32, paddingTop: 16, borderTop: "1px solid #E6F1FB" }}>
-                            {[
-                                { nilai: `${guru.totalSiswa}+`, label: "Siswa Diajar" },
-                                { nilai: `${guru.kepuasan}%`, label: "Kepuasan Siswa" },
-                            ].map(({ nilai, label }) => (
+                            {[{ nilai: `${guru.totalSiswa}+`, label: "Siswa Diajar" }, { nilai: `${guru.kepuasan}%`, label: "Kepuasan Siswa" }].map(({ nilai, label }) => (
                                 <div key={label} style={{ textAlign: "center" }}>
                                     <div style={{ fontSize: 20, fontWeight: 800, color: "#042C53" }}>{nilai}</div>
                                     <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{label}</div>
@@ -241,11 +257,7 @@ export default function DetailGuru() {
                     {/* Mata Pelajaran */}
                     <div style={s.card}>
                         <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 14 }}>Mata Pelajaran</div>
-                        <div>
-                            {guru.mataPelajaran.map((mp) => (
-                                <span key={mp} style={s.chip}>{mp}</span>
-                            ))}
-                        </div>
+                        <div>{guru.mataPelajaran.map((mp) => <span key={mp} style={s.chip}>{mp}</span>)}</div>
                     </div>
 
                     {/* Ulasan */}
@@ -254,27 +266,28 @@ export default function DetailGuru() {
                             <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53" }}>Ulasan Siswa</div>
                             <span style={s.badge("#E6F1FB", "#0C447C")}>★ {guru.rating} · {guru.totalUlasan} ulasan</span>
                         </div>
-                        {guru.ulasan.map((u, i) => (
+                        {guru.ulasan.length === 0 ? (
+                            <p style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "16px 0" }}>Belum ada ulasan.</p>
+                        ) : guru.ulasan.map((u, i) => (
                             <div key={u.id} style={{ padding: "16px 0", borderBottom: i < guru.ulasan.length - 1 ? "1px solid #E6F1FB" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                    <div style={s.avatar(u.warnaBg, u.warnaText, 34)}>{u.inisial}</div>
+                                    <div style={s.avatarBox(getWarna(i).bg, getWarna(i).text, 34)}>
+                                        {getInisial(u.nama)}
+                                    </div>
                                     <div>
                                         <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53" }}>{u.nama}</div>
                                         <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{u.waktu}</div>
                                     </div>
-                                    <div style={{ marginLeft: "auto" }}>
-                                        <Bintang jumlah={u.bintang} />
-                                    </div>
+                                    <div style={{ marginLeft: "auto" }}><Bintang jumlah={u.bintang} /></div>
                                 </div>
                                 <p style={{ fontSize: 13, color: "#555", lineHeight: 1.65 }}>{u.komentar}</p>
                             </div>
                         ))}
                     </div>
-
                 </div>
 
                 {/* KOLOM KANAN */}
-                <BookingCard guru={guru} />
+                <BookingCard guru={guru} isFavorit={isFavorit} onToggleFavorit={handleToggleFavorit} />
 
             </div>
         </div>
