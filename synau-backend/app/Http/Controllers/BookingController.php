@@ -44,10 +44,29 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
-        $bookings = Booking::with('guru.user')
+        $bookings = Booking::with(['guru.user'])
             ->where('siswa_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($b) {
+                return [
+                    'id'            => $b->id,
+                    'guru_id'       => $b->guru_id,
+                    'paket'         => $b->paket,
+                    'hari_dipilih'  => $b->hari_dipilih,
+                    'waktu_mulai'   => $b->waktu_mulai,
+                    'tanggal_mulai' => $b->tanggal_mulai?->format('Y-m-d'),
+                    'catatan'       => $b->catatan,
+                    'status'        => $b->status,
+                    'total_harga'   => $b->total_harga,
+                    'guru'          => [
+                        'id'    => $b->guru->id,
+                        'nama'  => $b->guru->user->name,
+                        'mapel' => $b->guru->mata_pelajaran[0] ?? '',
+                        'kota'  => $b->guru->user->kota,
+                    ],
+                ];
+            });
 
         return response()->json($bookings);
     }

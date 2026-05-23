@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from '../../services/api';
 
-// Warna avatar berdasarkan index
 const warnaList = [
     { bg: "#185FA5", text: "#fff" },
     { bg: "#B5D4F4", text: "#0C447C" },
@@ -11,7 +10,7 @@ const warnaList = [
 ];
 
 const getWarna = (index) => warnaList[index % warnaList.length];
-const getInisial = (nama) => nama.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
+const getInisial = (nama) => nama?.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase() ?? "?";
 
 const filterMapel = ["Semua", "Matematika", "Fisika", "Bahasa Inggris", "IPA", "Biologi", "Kimia"];
 
@@ -116,16 +115,20 @@ function SesiMendatang({ jadwal, loading }) {
                 <p style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "16px 0" }}>Belum ada sesi terjadwal.</p>
             ) : (
                 jadwal.slice(0, 3).map((j, i) => {
-                    const tgl = new Date(j.tanggal_mulai);
+                    // Fix timezone issue — tambah T00:00:00 agar tidak geser 1 hari
+                    const tgl = new Date(j.tanggal_mulai + 'T00:00:00');
                     return (
-                        <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < jadwal.length - 1 ? "1px solid #E6F1FB" : "none" }}>
+                        <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < Math.min(jadwal.length, 3) - 1 ? "1px solid #E6F1FB" : "none" }}>
                             <div style={{ width: 40, height: 40, background: "#E6F1FB", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                 <div style={{ fontSize: 14, fontWeight: 800, color: "#185FA5" }}>{tgl.getDate()}</div>
                                 <div style={{ fontSize: 10, color: "#888" }}>{tgl.toLocaleString("id-ID", { month: "short" })}</div>
                             </div>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53" }}>{j.guru?.user?.name ?? "Guru"}</div>
-                                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Paket {j.paket} · {j.hari_dipilih?.join(", ")}</div>
+                                {/* Pakai j.guru.nama langsung dari response BookingController yang sudah diupdate */}
+                                <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53" }}>{j.guru?.nama ?? "Guru"}</div>
+                                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                                    {j.guru?.mapel} · Paket {j.paket} · {Array.isArray(j.hari_dipilih) ? j.hari_dipilih.join(", ") : j.hari_dipilih}
+                                </div>
                             </div>
                             <span style={s.badge(j.status === "confirmed" ? "#E1F5EE" : "#E6F1FB", j.status === "confirmed" ? "#0F6E56" : "#0C447C")}>
                                 {j.status === "confirmed" ? "Terkonfirmasi" : "Pending"}
@@ -142,7 +145,7 @@ function GuruFavorit({ guru, index, onLihat }) {
     if (!guru) return (
         <div style={s.card}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 16 }}>🏆 Guru Favoritmu</div>
-            <p style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "16px 0" }}>Belum ada guru favorit.</p>
+            <p style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "16px 0" }}>Belum ada guru favorit.<br /><span style={{ fontSize: 12 }}>Klik ❤️ di profil guru untuk menambahkan.</span></p>
         </div>
     );
     const warna = getWarna(index ?? 0);
@@ -176,13 +179,11 @@ export default function Dashboard() {
     const siswa = JSON.parse(localStorage.getItem('user')) ?? {};
 
     useEffect(() => {
-        // Fetch guru berdasarkan kota siswa
         api.get(`/guru?kota=${siswa.kota ?? ''}`)
             .then(res => setGuruList(res.data))
             .catch(() => setGuruList([]))
             .finally(() => setLoadingGuru(false));
 
-        // Fetch jadwal booking siswa
         api.get('/booking')
             .then(res => setJadwal(res.data))
             .catch(() => setJadwal([]))
@@ -197,15 +198,10 @@ export default function Dashboard() {
         })
         .slice(0, 4);
 
-    // Guru favorit = guru yang paling sering dibooking
-    const guruFavorit = jadwal.length > 0
-        ? (() => {
-            const count = {};
-            jadwal.forEach(j => { count[j.guru_id] = (count[j.guru_id] ?? 0) + 1; });
-            const topId = Object.entries(count).sort((a, b) => b[1] - a[1])[0]?.[0];
-            const topGuru = guruList.find(g => g.id === parseInt(topId));
-            return topGuru ?? null;
-        })()
+    // Guru favorit — baca dari localStorage yang disimpan saat klik ❤️ di DetailGuru
+    const favoritIds = JSON.parse(localStorage.getItem('favorit_guru') ?? '[]');
+    const guruFavorit = favoritIds.length > 0
+        ? guruList.find(g => g.id === favoritIds[favoritIds.length - 1]) ?? null
         : null;
 
     const handleLihatProfil = (guru) => {
@@ -213,11 +209,10 @@ export default function Dashboard() {
     };
 
     const handleLogout = async () => {
-        try {
-            await api.post('/auth/logout');
-        } catch (_) { }
+        try { await api.post('/auth/logout'); } catch (_) { }
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('favorit_guru');
         navigate('/');
     };
 
@@ -258,7 +253,7 @@ export default function Dashboard() {
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                         <SesiMendatang jadwal={jadwal} loading={loadingJadwal} />
-                        <GuruFavorit guru={guruFavorit} index={0} onLihat={handleLihatProfil} />
+                        <GuruFavorit guru={guruFavorit} index={favoritIds.length > 0 ? favoritIds[favoritIds.length - 1] % 4 : 0} onLihat={handleLihatProfil} />
                     </div>
                 </div>
             </div>

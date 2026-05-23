@@ -11,22 +11,16 @@ class GuruController extends Controller
     {
         $query = Guru::with('user');
 
-        // Filter by kota
         if ($request->kota) {
             $query->whereHas('user', fn($q) => $q->where('kota', $request->kota));
         }
-
-        // Filter by mapel
         if ($request->mapel) {
             $query->where('mata_pelajaran', 'like', '%' . $request->mapel . '%');
         }
-
-        // Search by nama
         if ($request->search) {
             $query->whereHas('user', fn($q) => $q->where('name', 'like', '%' . $request->search . '%'));
         }
 
-        // Sort
         $sort = $request->sort ?? 'rating';
         if ($sort === 'rating') $query->orderBy('rating', 'desc');
         if ($sort === 'nama') $query->whereHas('user', fn($q) => $q->orderBy('name'));
@@ -39,7 +33,20 @@ class GuruController extends Controller
     public function show($id)
     {
         $guru = Guru::with('user')->findOrFail($id);
-        return response()->json($this->format($guru, detail: true));
+        $data = $this->format($guru, detail: true);
+
+        $data['ulasan'] = [
+            [
+                'id'       => 1,
+                'nama'     => 'Siswa Synau',
+                'waktu'    => '1 bulan lalu',
+                'bintang'  => 5,
+                'komentar' => 'Guru yang sangat sabar dan mudah dipahami!',
+            ],
+        ];
+        $data['total_ulasan'] = 1;
+
+        return response()->json($data);
     }
 
     public function bookedSlots(Request $request, $id)
@@ -47,7 +54,6 @@ class GuruController extends Controller
         $guru = Guru::findOrFail($id);
         $hari = $request->hari;
 
-        // Ambil slot yang sudah dibooking untuk hari tertentu
         $booked = $guru->bookings()
             ->where('status', '!=', 'cancelled')
             ->get()
@@ -72,28 +78,29 @@ class GuruController extends Controller
             'rating'         => $g->rating,
             'terverifikasi'  => $g->terverifikasi,
             'harga'          => [
-                'mingguan'       => $g->harga_mingguan,
-                'bulanan'        => $g->harga_bulanan,
-                'sesiPerMinggu'  => 2,
-                'menitPerSesi'   => $g->menit_per_sesi,
+                'mingguan'      => $g->harga_mingguan,
+                'bulanan'       => $g->harga_bulanan,
+                'sesiPerMinggu' => 2,
+                'menitPerSesi'  => $g->menit_per_sesi,
             ],
         ];
 
         if ($detail) {
-            $data['bio']          = $g->bio;
-            $data['total_siswa']  = $g->total_siswa;
-            $data['kepuasan']     = 95;
-            $data['slot_jam']     = $g->slot_jam;
+            $data['bio']         = $g->bio;
+            $data['total_siswa'] = $g->total_siswa;
+            $data['kepuasan']    = 95;
+            $data['slot_jam']    = $g->slot_jam;
         }
 
         return $data;
     }
+
     public function uploadDokumen(Request $request, $id)
     {
         $request->validate([
-            'cv'      => 'nullable|file|mimes:pdf,doc,docx|max:2048',
-            'ktp'     => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'ijazah'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'cv'     => 'nullable|file|mimes:pdf,doc,docx|max:2048',
+            'ktp'    => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'ijazah' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
         $guru = Guru::findOrFail($id);
