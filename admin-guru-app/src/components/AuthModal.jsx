@@ -100,7 +100,7 @@ function FileUploadField({ label, accept, description, icon, onChange, fileName 
   );
 }
 
-function LoginForm({ onSuccess }) {
+function LoginForm({ onClose }) {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -115,9 +115,25 @@ function LoginForm({ onSuccess }) {
     setError("");
     try {
       const res = await api.post("/auth/login", form);
-      localStorage.setItem("token", res.data.token);
-      onSuccess(res.data.token);
-      navigate("/dashboardguru");
+      const { token, user } = res.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      onClose();
+
+      // Redirect otomatis berdasarkan role — tanpa pemilihan role manual
+      const role = user?.role;
+      if (role === "admin") {
+        navigate("/admin/dashboard");
+      } else if (role === "guru") {
+        navigate("/dashboardguru");
+      } else {
+        // Kalau role tidak dikenali (misal siswa login di sini)
+        setError("Akun ini bukan akun guru atau admin.");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Login gagal. Periksa kembali email dan password Anda.");
     } finally {
@@ -178,14 +194,18 @@ function LoginForm({ onSuccess }) {
   );
 }
 
-function RegisterForm({ onSuccess, onRegisterSuccess }) {
+function RegisterForm({ onRegisterSuccess }) {
   const [form, setForm] = useState({
     namaLengkap: "",
     namaPanggilan: "",
     email: "",
     tanggalLahir: "",
     noHp: "",
-    alamat: "",
+    alamatLengkap: "",
+    kelurahan: "",
+    kecamatan: "",
+    kota: "",
+    provinsi: "",
     password: "",
   });
   const [files, setFiles] = useState({
@@ -201,7 +221,6 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
   const [tncAgreed, setTncAgreed] = useState(false);
 
   const handlePreSubmit = () => {
-    // Validate required fields
     const requiredFields = ['namaLengkap', 'email', 'password'];
     for (const key of requiredFields) {
       if (!form[key]) {
@@ -221,25 +240,37 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
     setLoading(true);
     setError("");
 
-    // Build FormData for file upload
     const formData = new FormData();
-    Object.entries(form).forEach(([key, val]) => formData.append(key, val));
-    Object.entries(files).forEach(([key, file]) => {
-      if (file) formData.append(key, file);
-    });
+    formData.append("name", form.namaLengkap);
+    formData.append("nama_panggilan", form.namaPanggilan);
+    formData.append("email", form.email);
+    formData.append("tanggal_lahir", form.tanggalLahir);
+    formData.append("no_hp", form.noHp);
+    formData.append("alamat_lengkap", form.alamatLengkap);
+    formData.append("kelurahan", form.kelurahan);
+    formData.append("kecamatan", form.kecamatan);
+    formData.append("kota", form.kota);
+    formData.append("provinsi", form.provinsi);
+    formData.append("password", form.password);
+    formData.append("password_confirmation", form.password);
+    if (files.cv) formData.append("cv", files.cv);
+    if (files.ktp) formData.append("ktp", files.ktp);
+    if (files.ijazah) formData.append("ijazah", files.ijazah);
 
     try {
-      // NOTE: Sesuaikan dengan endpoint registrasi guru jika ada
-      // const res = await api.post('/auth/register-guru', formData);
-      console.log("Register payload:", form, files);
-      
-      // Simulate success for now since backend might not have this endpoint yet
-      setTimeout(() => {
-        onRegisterSuccess();
-        setLoading(false);
-      }, 1000);
+      await api.post("/auth/register-guru", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      localStorage.setItem("registration_pending", "true");
+      onRegisterSuccess();
     } catch (err) {
-      setError("Gagal mendaftar. Silakan coba lagi.");
+      setError(
+        err.response?.data?.message ||
+          err.response?.data?.errors
+          ? Object.values(err.response.data.errors).flat().join(" ")
+          : "Gagal mendaftar. Silakan coba lagi."
+      );
+    } finally {
       setLoading(false);
     }
   };
@@ -257,7 +288,6 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
 
   return (
     <div>
-      {/* Nama Lengkap & Panggilan */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
         <div>
           <label style={labelStyle}>Nama Lengkap</label>
@@ -269,13 +299,11 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
         </div>
       </div>
 
-      {/* Email */}
       <div style={{ marginBottom: "14px" }}>
         <label style={labelStyle}>Email</label>
         <input type="email" placeholder="email@contoh.com" {...field("email")} disabled={showTNC} />
       </div>
 
-      {/* Tanggal Lahir & No HP */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
         <div>
           <label style={labelStyle}>Tanggal Lahir</label>
@@ -287,46 +315,68 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
         </div>
       </div>
 
-      {/* Alamat */}
+      {/* Alamat Lengkap */}
       <div style={{ marginBottom: "14px" }}>
-        <label style={labelStyle}>Alamat</label>
+        <label style={labelStyle}>Alamat Lengkap <span style={{ color: "#aaa", fontWeight: 400 }}>(Nama jalan, nomor rumah)</span></label>
         <textarea
-          placeholder="Jl. Contoh No.1, Kota"
+          placeholder="Jl. Mawar No. 12"
           rows={2}
-          value={form.alamat}
-          onChange={(e) => setForm({ ...form, alamat: e.target.value })}
-          onFocus={() => setFocusedField("alamat")}
+          value={form.alamatLengkap}
+          onChange={(e) => setForm({ ...form, alamatLengkap: e.target.value })}
+          onFocus={() => setFocusedField("alamatLengkap")}
           onBlur={() => setFocusedField(null)}
           disabled={showTNC}
-          style={{
-            ...inputStyle,
-            resize: "none",
-            borderColor: focusedField === "alamat" ? "#1565C0" : "#e0e0e0",
-          }}
+          style={{ ...inputStyle, resize: "none", borderColor: focusedField === "alamatLengkap" ? "#1565C0" : "#e0e0e0" }}
         />
       </div>
 
-      {/* Password */}
+      {/* Kelurahan & Kecamatan */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+        <div>
+          <label style={labelStyle}>Kelurahan</label>
+          <input
+            type="text" placeholder="Giwangan"
+            {...field("kelurahan")} disabled={showTNC}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>Kecamatan</label>
+          <input
+            type="text" placeholder="Umbulharjo"
+            {...field("kecamatan")} disabled={showTNC}
+          />
+        </div>
+      </div>
+
+      {/* Kota & Provinsi */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+        <div>
+          <label style={labelStyle}>Kota / Kabupaten</label>
+          <input
+            type="text" placeholder="Yogyakarta"
+            {...field("kota")} disabled={showTNC}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>Provinsi</label>
+          <input
+            type="text" placeholder="DI Yogyakarta"
+            {...field("provinsi")} disabled={showTNC}
+          />
+        </div>
+      </div>
+
       <div style={{ marginBottom: "20px" }}>
         <label style={labelStyle}>Password</label>
         <input type="password" placeholder="Min. 8 karakter" {...field("password")} disabled={showTNC} />
       </div>
 
-      {/* Divider */}
-      <div style={{
-        borderTop: "1px solid #e8e8e8",
-        margin: "8px 0 20px",
-        position: "relative",
-      }}>
-        <span style={{
-          position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
-          background: "#fff", padding: "0 12px", fontSize: 12, fontWeight: 600, color: "#999",
-        }}>
+      <div style={{ borderTop: "1px solid #e8e8e8", margin: "8px 0 20px", position: "relative" }}>
+        <span style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: "#fff", padding: "0 12px", fontSize: 12, fontWeight: 600, color: "#999" }}>
           Dokumen Pendaftaran
         </span>
       </div>
 
-      {/* Upload CV */}
       <FileUploadField
         label="Upload CV"
         accept=".pdf,.doc,.docx"
@@ -335,8 +385,6 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
         fileName={files.cv?.name}
         onChange={(file) => !showTNC && setFiles({ ...files, cv: file })}
       />
-
-      {/* Scan KTP */}
       <FileUploadField
         label="Scan KTP"
         accept=".jpg,.jpeg,.png,.pdf"
@@ -345,8 +393,6 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
         fileName={files.ktp?.name}
         onChange={(file) => !showTNC && setFiles({ ...files, ktp: file })}
       />
-
-      {/* Ijazah / Surat Aktif Kuliah */}
       <FileUploadField
         label="Ijazah Min. S1 / Surat Aktif Kuliah"
         accept=".jpg,.jpeg,.png,.pdf"
@@ -363,18 +409,14 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
       )}
 
       {showTNC ? (
-        <div style={{
-          marginTop: 24, padding: 18, background: '#f8fafc', 
-          border: '1px solid #e2e8f0', borderRadius: 12,
-          animation: "modalSlide 0.3s ease-out"
-        }}>
+        <div style={{ marginTop: 24, padding: 18, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, animation: "modalSlide 0.3s ease-out" }}>
           <h4 style={{ fontSize: 14, fontWeight: 700, color: '#042C53', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             Syarat & Ketentuan
             <button onClick={() => setTncExpanded(!tncExpanded)} style={{ background: 'none', border: 'none', color: '#1565C0', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
               {tncExpanded ? 'Sembunyikan' : 'Lihat Detail'}
             </button>
           </h4>
-          
+
           {tncExpanded && (
             <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6, maxHeight: 150, overflowY: 'auto', marginBottom: 16, paddingRight: 8 }}>
               <p style={{ marginBottom: 6 }}>1. Data yang diberikan adalah benar dan dapat dipertanggungjawabkan.</p>
@@ -384,11 +426,11 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
               <p style={{ marginBottom: 6 }}>5. Semua dokumen yang diunggah akan dijaga kerahasiaannya sesuai dengan Kebijakan Privasi.</p>
             </div>
           )}
-          
+
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginTop: tncExpanded ? 0 : 12, background: '#fff', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
-            <input 
-              type="checkbox" 
-              checked={tncAgreed} 
+            <input
+              type="checkbox"
+              checked={tncAgreed}
               onChange={(e) => setTncAgreed(e.target.checked)}
               style={{ marginTop: 2, width: 16, height: 16, accentColor: '#1565C0', cursor: 'pointer' }}
             />
@@ -396,13 +438,13 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
               Saya telah membaca dan menyetujui Syarat & Ketentuan pendaftaran guru Synau.
             </span>
           </label>
-          
+
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
             <button onClick={() => setShowTNC(false)} disabled={loading} style={{ flex: 1, padding: '12px', background: '#fff', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 10, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               Batal
             </button>
-            <button 
-              onClick={handleFinalSubmit} 
+            <button
+              onClick={handleFinalSubmit}
               disabled={!tncAgreed || loading}
               style={{ flex: 1, padding: '12px', background: (!tncAgreed || loading) ? '#ccc' : '#1565C0', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: (!tncAgreed || loading) ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}
             >
@@ -413,20 +455,7 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
       ) : (
         <button
           onClick={handlePreSubmit}
-          style={{
-            width: "100%",
-            padding: "13px",
-            background: "#1565C0",
-            color: "#fff",
-            border: "none",
-            borderRadius: "12px",
-            fontSize: "15px",
-            fontWeight: "700",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            transition: "background 0.2s",
-            marginTop: "12px",
-          }}
+          style={{ width: "100%", padding: "13px", background: "#1565C0", color: "#fff", border: "none", borderRadius: "12px", fontSize: "15px", fontWeight: "700", cursor: "pointer", fontFamily: "inherit", transition: "background 0.2s", marginTop: "12px" }}
         >
           Daftar Sekarang
         </button>
@@ -438,19 +467,10 @@ function RegisterForm({ onSuccess, onRegisterSuccess }) {
 function SuccessMessage({ onClose }) {
   return (
     <div style={{ textAlign: "center", padding: "20px 0" }}>
-      <div style={{
-        width: 72, height: 72, borderRadius: "50%",
-        background: "linear-gradient(135deg, #1D9E75, #28c840)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        margin: "0 auto 24px", fontSize: 36, color: "#fff",
-        boxShadow: "0 8px 24px rgba(29,158,117,0.3)",
-        animation: "successPop 0.5s ease-out"
-      }}>
+      <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, #1D9E75, #28c840)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", fontSize: 36, color: "#fff", boxShadow: "0 8px 24px rgba(29,158,117,0.3)", animation: "successPop 0.5s ease-out" }}>
         ✓
       </div>
-      <h3 style={{ fontSize: 20, fontWeight: 700, color: "#042C53", marginBottom: 8 }}>
-        Data Diterima!
-      </h3>
+      <h3 style={{ fontSize: 20, fontWeight: 700, color: "#042C53", marginBottom: 8 }}>Data Diterima!</h3>
       <p style={{ fontSize: 15, color: "#666", lineHeight: 1.7, marginBottom: 8, maxWidth: 320, margin: "0 auto 8px" }}>
         Pendaftaran Anda sedang diproses.
       </p>
@@ -459,19 +479,7 @@ function SuccessMessage({ onClose }) {
       </p>
       <button
         onClick={onClose}
-        style={{
-          width: "100%",
-          padding: "13px",
-          background: "#1565C0",
-          color: "#fff",
-          border: "none",
-          borderRadius: "12px",
-          fontSize: "15px",
-          fontWeight: "700",
-          cursor: "pointer",
-          fontFamily: "inherit",
-          transition: "background 0.2s",
-        }}
+        style={{ width: "100%", padding: "13px", background: "#1565C0", color: "#fff", border: "none", borderRadius: "12px", fontSize: "15px", fontWeight: "700", cursor: "pointer", fontFamily: "inherit", transition: "background 0.2s" }}
       >
         Tutup
       </button>
@@ -482,9 +490,7 @@ function SuccessMessage({ onClose }) {
 export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [showSuccess, setShowSuccess] = useState(false);
-  const navigate = useNavigate();
 
-  // Sync activeTab when defaultTab changes (e.g., from navbar button)
   useEffect(() => {
     if (isOpen) {
       if (defaultTab === 'status') {
@@ -525,98 +531,47 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
           100% { transform: translateY(0); opacity: 1; }
         }
       `}</style>
-      {/* Overlay */}
       <div
         onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.5)",
-          zIndex: 999,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "20px",
-        }}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
       >
-        {/* Modal */}
         <div
           onClick={(e) => e.stopPropagation()}
-          style={{
-            background: "#fff",
-            borderRadius: "20px",
-            width: "100%",
-            maxWidth: "480px",
-            padding: "40px",
-            position: "relative",
-            maxHeight: "90vh",
-            overflowY: "auto",
-            fontFamily: "'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif",
-            animation: "modalSlide 0.3s ease-out",
-          }}
+          style={{ background: "#fff", borderRadius: "20px", width: "100%", maxWidth: "480px", padding: "40px", position: "relative", maxHeight: "90vh", overflowY: "auto", fontFamily: "'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif", animation: "modalSlide 0.3s ease-out" }}
         >
-          {/* Tombol tutup */}
           <button
             onClick={onClose}
-            style={{
-              position: "absolute",
-              top: "16px",
-              right: "16px",
-              background: "#f5f5f5",
-              border: "none",
-              borderRadius: "50%",
-              width: "32px",
-              height: "32px",
-              fontSize: "18px",
-              color: "#666",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "background 0.2s",
-              zIndex: 1,
-            }}
+            style={{ position: "absolute", top: "16px", right: "16px", background: "#f5f5f5", border: "none", borderRadius: "50%", width: "32px", height: "32px", fontSize: "18px", color: "#666", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.2s", zIndex: 1 }}
           >
             ×
           </button>
 
           {showSuccess ? (
-            <SuccessMessage 
-              onClose={onClose} 
-            />
+            <SuccessMessage onClose={onClose} />
           ) : (
             <>
-              {/* Header */}
               <div style={{ textAlign: "center", marginBottom: "28px" }}>
-                <div style={{ fontSize: "26px", fontWeight: "800", color: "#1565C0", letterSpacing: "-0.5px", marginBottom: "4px" }}>
-                  Synau
-                </div>
+                <div style={{ fontSize: "26px", fontWeight: "800", color: "#1565C0", letterSpacing: "-0.5px", marginBottom: "4px" }}>Synau</div>
                 <div style={{ fontSize: "20px", fontWeight: "700", color: "#1a1a1a", marginBottom: "4px" }}>
                   {activeTab === "login" ? "Masuk ke Akun" : "Daftar sebagai Guru"}
                 </div>
                 <div style={{ fontSize: "14px", color: "#777" }}>
                   {activeTab === "login"
-                    ? "Selamat datang kembali! Silakan masuk."
+                    ? "Guru & Admin masuk di sini."
                     : "Lengkapi data dan dokumen untuk mendaftar."}
                 </div>
               </div>
 
-              {/* Tab switcher */}
               <div style={{ display: "flex", background: "#f0f4ff", borderRadius: "12px", padding: "4px", marginBottom: "28px" }}>
                 <button style={tabBtn("login")} onClick={() => setActiveTab("login")}>Masuk</button>
                 <button style={tabBtn("register")} onClick={() => setActiveTab("register")}>Daftar</button>
               </div>
 
-              {/* Form */}
               {activeTab === "login" ? (
-                <LoginForm onSuccess={(token) => { console.log("token:", token); onClose(); }} />
+                <LoginForm onClose={onClose} />
               ) : (
                 <RegisterForm
-                  onSuccess={(token) => { console.log("token:", token); onClose(); }}
-                  onRegisterSuccess={() => {
-                    localStorage.setItem('registration_pending', 'true');
-                    setShowSuccess(true);
-                  }}
+                  onRegisterSuccess={() => setShowSuccess(true)}
                 />
               )}
             </>

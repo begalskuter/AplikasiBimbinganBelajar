@@ -16,6 +16,7 @@ class User extends Authenticatable
         'nama_panggilan', 'tanggal_lahir', 'no_hp',
         'alamat_lengkap', 'kelurahan', 'kecamatan',
         'kota', 'provinsi', 'role', 'foto_url',
+        'cv_url', 'ktp_url', 'ijazah_url', 'is_verified',
     ];
 
     protected $hidden = [
