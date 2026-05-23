@@ -4,6 +4,7 @@ import Dashboard from './pages/dashboard/Dashboard'
 import CariGuru from './pages/dashboard/CariGuru'
 import DetailGuru from './pages/dashboard/DetailGuru'
 import Booking from './pages/dashboard/Booking'
+import Profile from './pages/dashboard/Profile'
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         {/* nanti tambah: */}
         <Route path="/guru/:id" element={<DetailGuru />} />
         <Route path="/booking/:id" element={<Booking />} />
+        <Route path="/profile" element={<Profile />} />
         {/* <Route path="/booking/:id" element={<Booking />} /> */}
       </Routes>
     </BrowserRouter>

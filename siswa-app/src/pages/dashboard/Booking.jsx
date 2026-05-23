@@ -3,47 +3,36 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import api from '../../services/api';
 
 const HARI_URUT = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
-// Index hari JS (0=Minggu, 1=Senin, dst)
 const HARI_KE_JS = { "Minggu": 0, "Senin": 1, "Selasa": 2, "Rabu": 3, "Kamis": 4, "Jumat": 5, "Sabtu": 6 };
 
 const formatRupiah = (angka) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(angka);
 
-// Hitung tanggal terdekat dari hari yang dipilih (min besok)
 const getTanggalTerdekat = (hariDipilih) => {
     if (!hariDipilih || hariDipilih.length === 0) return "";
     const besok = new Date();
     besok.setDate(besok.getDate() + 1);
     besok.setHours(0, 0, 0, 0);
-
     const hariJsTarget = hariDipilih.map(h => HARI_KE_JS[h]);
-
     for (let i = 0; i < 14; i++) {
         const cek = new Date(besok);
         cek.setDate(besok.getDate() + i);
-        if (hariJsTarget.includes(cek.getDay())) {
-            return cek.toISOString().split('T')[0];
-        }
+        if (hariJsTarget.includes(cek.getDay())) return cek.toISOString().split('T')[0];
     }
     return "";
 };
 
-// Generate semua tanggal yang boleh dipilih (hari sesuai pilihan, mulai besok, max 3 bulan ke depan)
 const getTanggalValid = (hariDipilih) => {
     const valid = new Set();
     const besok = new Date();
     besok.setDate(besok.getDate() + 1);
     besok.setHours(0, 0, 0, 0);
-
     const hariJsTarget = hariDipilih.map(h => HARI_KE_JS[h]);
     const batas = new Date(besok);
     batas.setMonth(batas.getMonth() + 3);
-
     const cur = new Date(besok);
     while (cur <= batas) {
-        if (hariJsTarget.includes(cur.getDay())) {
-            valid.add(cur.toISOString().split('T')[0]);
-        }
+        if (hariJsTarget.includes(cur.getDay())) valid.add(cur.toISOString().split('T')[0]);
         cur.setDate(cur.getDate() + 1);
     }
     return valid;
@@ -51,6 +40,7 @@ const getTanggalValid = (hariDipilih) => {
 
 const mockFallbackGuru = {
     id: 1, nama: "Bu Wulandari, S.Pd", mapel: "Matematika",
+    mataPelajaran: ["Matematika", "Fisika"],
     kota: "Yogyakarta", rating: 4.9, warnaBg: "#185FA5", warnaText: "#fff",
     jadwal: ["Senin", "Rabu", "Jumat", "Sabtu"],
     harga: { mingguan: 150000, bulanan: 500000, sesiPerMinggu: 2, menitPerSesi: 90 },
@@ -66,7 +56,7 @@ const s = {
     badge: (bg, color) => ({ display: "inline-flex", alignItems: "center", background: bg, color: color, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100 }),
 };
 
-const steps = ["Pilih Paket", "Detail Jadwal", "Konfirmasi"];
+const steps = ["Pilih Paket", "Detail Jadwal", "Pembayaran"];
 
 function StepIndicator({ aktif }) {
     return (
@@ -94,9 +84,14 @@ function StepIndicator({ aktif }) {
     );
 }
 
-function Step1({ guru, paket, setPaket, jadwalDipilih, setJadwalDipilih, onNext }) {
+function Step1({ guru, paket, setPaket, mapelDipilih, setMapelDipilih, jadwalDipilih, setJadwalDipilih, onNext }) {
     const harga = paket === "mingguan" ? guru.harga.mingguan : guru.harga.bulanan;
     const maxHari = paket === "mingguan" ? 2 : 3;
+
+    // Daftar mata pelajaran — fallback ke mapel tunggal kalau mataPelajaran kosong
+    const daftarMapel = guru.mataPelajaran?.length > 0
+        ? guru.mataPelajaran
+        : [guru.mapel].filter(Boolean);
 
     const toggleJadwal = (hari) => {
         setJadwalDipilih((prev) => {
@@ -107,6 +102,7 @@ function Step1({ guru, paket, setPaket, jadwalDipilih, setJadwalDipilih, onNext 
     };
 
     const inisial = guru.nama?.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
+    const bisaLanjut = jadwalDipilih.length > 0 && mapelDipilih;
 
     return (
         <div>
@@ -118,12 +114,41 @@ function Step1({ guru, paket, setPaket, jadwalDipilih, setJadwalDipilih, onNext 
                     </div>
                     <div>
                         <div style={{ fontSize: 16, fontWeight: 700, color: "#042C53" }}>{guru.nama}</div>
-                        <div style={{ fontSize: 13, color: "#888", marginTop: 3 }}>{guru.mapel} · {guru.kota}</div>
+                        <div style={{ fontSize: 13, color: "#888", marginTop: 3 }}>{guru.kota}</div>
                     </div>
                     <span style={{ marginLeft: "auto", ...s.badge("#E6F1FB", "#0C447C") }}>★ {guru.rating}</span>
                 </div>
             </div>
 
+            {/* Pilih Mata Pelajaran */}
+            <div style={s.card}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 6 }}>Pilih Mata Pelajaran</div>
+                <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Pilih 1 mata pelajaran yang ingin dipelajari</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    {daftarMapel.map((mp) => {
+                        const dipilih = mapelDipilih === mp;
+                        return (
+                            <div
+                                key={mp}
+                                onClick={() => setMapelDipilih(mp)}
+                                style={{
+                                    padding: "10px 20px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+                                    cursor: "pointer", transition: "all 0.15s",
+                                    border: dipilih ? "2px solid #185FA5" : "1.5px solid #B5D4F4",
+                                    background: dipilih ? "#185FA5" : "#fff",
+                                    color: dipilih ? "#fff" : "#185FA5",
+                                    boxShadow: dipilih ? "0 2px 8px rgba(24,95,165,0.2)" : "none",
+                                }}
+                            >
+                                {mp}
+                            </div>
+                        );
+                    })}
+                </div>
+                {!mapelDipilih && <div style={{ fontSize: 12, color: "#E24B4A", marginTop: 10 }}>* Pilih mata pelajaran terlebih dahulu</div>}
+            </div>
+
+            {/* Pilih Paket */}
             <div style={s.card}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 16 }}>Pilih Paket Belajar</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -145,6 +170,7 @@ function Step1({ guru, paket, setPaket, jadwalDipilih, setJadwalDipilih, onNext 
                 </div>
             </div>
 
+            {/* Pilih Hari */}
             <div style={s.card}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 6 }}>Pilih Hari Belajar</div>
                 <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>
@@ -172,7 +198,7 @@ function Step1({ guru, paket, setPaket, jadwalDipilih, setJadwalDipilih, onNext 
                 <div style={{ fontSize: 24, fontWeight: 800, color: "#042C53" }}>{formatRupiah(harga)}</div>
             </div>
 
-            <button onClick={onNext} disabled={jadwalDipilih.length === 0} style={{ width: "100%", padding: 14, background: jadwalDipilih.length === 0 ? "#B5D4F4" : "#185FA5", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: jadwalDipilih.length === 0 ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+            <button onClick={onNext} disabled={!bisaLanjut} style={{ width: "100%", padding: 14, background: !bisaLanjut ? "#B5D4F4" : "#185FA5", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: !bisaLanjut ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
                 Lanjut
             </button>
         </div>
@@ -185,7 +211,6 @@ function SlotJam({ hari, guruId, slotDipilih, onPilih }) {
     const [bookedSlots, setBookedSlots] = useState([]);
 
     useEffect(() => {
-        // Fetch slot yang sudah dibooking dari API
         api.get(`/guru/${guruId}/booked-slots?hari=${hari}`)
             .then(res => setBookedSlots(res.data.booked_slots ?? []))
             .catch(() => setBookedSlots([]));
@@ -219,21 +244,14 @@ function SlotJam({ hari, guruId, slotDipilih, onPilih }) {
 
 function Step2({ guru, jadwalDipilih, waktuMulai, setWaktuMulai, tanggalMulai, setTanggalMulai, catatan, setCatatan, onNext, onBack }) {
     const semuaSudahPilih = jadwalDipilih.every((hari) => waktuMulai[hari]);
-
-    // Tanggal valid: hanya hari yang dipilih, mulai besok
     const tanggalValid = getTanggalValid(jadwalDipilih);
     const tanggalMin = getTanggalTerdekat(jadwalDipilih);
+    const infoHari = jadwalDipilih.join(" & ");
 
-    // Validasi tanggal yang dipilih harus sesuai hari
     const handleTanggalChange = (e) => {
         const val = e.target.value;
-        if (tanggalValid.has(val)) {
-            setTanggalMulai(val);
-        }
+        if (tanggalValid.has(val)) setTanggalMulai(val);
     };
-
-    // Format info hari yang dipilih
-    const infoHari = jadwalDipilih.join(" & ");
 
     return (
         <div>
@@ -245,79 +263,140 @@ function Step2({ guru, jadwalDipilih, waktuMulai, setWaktuMulai, tanggalMulai, s
                     <span style={{ background: "#FEF3E2", color: "#633806", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6 }}>45 menit jeda antar sesi</span>
                 </div>
 
-                {/* Tanggal mulai */}
                 <div style={{ marginBottom: 20 }}>
                     <label style={s.label}>Tanggal Mulai</label>
                     <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
                         Hanya bisa memilih hari <strong style={{ color: "#185FA5" }}>{infoHari}</strong> · mulai besok
                     </div>
                     <input
-                        type="date"
-                        value={tanggalMulai}
-                        min={tanggalMin}
+                        type="date" value={tanggalMulai} min={tanggalMin}
                         onChange={handleTanggalChange}
                         style={{ ...s.input, borderColor: tanggalMulai && !tanggalValid.has(tanggalMulai) ? "#E24B4A" : "#e0e0e0" }}
                         onFocus={(e) => (e.target.style.borderColor = "#185FA5")}
                         onBlur={(e) => (e.target.style.borderColor = tanggalMulai && !tanggalValid.has(tanggalMulai) ? "#E24B4A" : "#e0e0e0")}
                     />
                     {tanggalMulai && !tanggalValid.has(tanggalMulai) && (
-                        <div style={{ fontSize: 12, color: "#E24B4A", marginTop: 6 }}>
-                            ⚠ Tanggal ini bukan hari {infoHari}. Pilih tanggal yang sesuai.
-                        </div>
+                        <div style={{ fontSize: 12, color: "#E24B4A", marginTop: 6 }}>⚠ Tanggal ini bukan hari {infoHari}. Pilih tanggal yang sesuai.</div>
                     )}
                     {tanggalMin && (
                         <div style={{ fontSize: 12, color: "#888", marginTop: 6 }}>
-                            Tanggal terdekat yang tersedia: <strong>{new Date(tanggalMin + 'T00:00:00').toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</strong>
+                            Tanggal terdekat: <strong>{new Date(tanggalMin + 'T00:00:00').toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</strong>
                         </div>
                     )}
                 </div>
 
-                {/* Slot jam per hari */}
                 <div style={{ marginBottom: 8 }}>
                     <label style={s.label}>Pilih Slot Jam per Hari</label>
                     <div style={{ fontSize: 12, color: "#aaa", marginBottom: 14 }}>Slot abu-abu sudah dibooking siswa lain</div>
                     {jadwalDipilih.map((hari) => (
-                        <SlotJam
-                            key={hari}
-                            hari={hari}
-                            guruId={guru.id}
-                            slotDipilih={waktuMulai[hari] ?? null}
-                            onPilih={(slot) => setWaktuMulai({ ...waktuMulai, [hari]: slot })}
-                        />
+                        <SlotJam key={hari} hari={hari} guruId={guru.id} slotDipilih={waktuMulai[hari] ?? null} onPilih={(slot) => setWaktuMulai({ ...waktuMulai, [hari]: slot })} />
                     ))}
                 </div>
 
-                {/* Catatan */}
                 <div>
                     <label style={s.label}>Catatan untuk Guru <span style={{ fontWeight: 400, color: "#aaa" }}>(opsional)</span></label>
-                    <textarea
-                        placeholder="Contoh: fokus ke bab trigonometri, persiapan ujian tengah semester..."
-                        rows={3} value={catatan}
-                        onChange={(e) => setCatatan(e.target.value)}
-                        style={{ ...s.input, resize: "none" }}
-                        onFocus={(e) => (e.target.style.borderColor = "#185FA5")}
-                        onBlur={(e) => (e.target.style.borderColor = "#e0e0e0")}
-                    />
+                    <textarea placeholder="Contoh: fokus ke bab trigonometri, persiapan ujian tengah semester..." rows={3} value={catatan} onChange={(e) => setCatatan(e.target.value)} style={{ ...s.input, resize: "none" }} onFocus={(e) => (e.target.style.borderColor = "#185FA5")} onBlur={(e) => (e.target.style.borderColor = "#e0e0e0")} />
                 </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12 }}>
                 <button onClick={onBack} style={{ padding: 14, background: "none", border: "1px solid #B5D4F4", borderRadius: 12, fontSize: 14, fontWeight: 600, color: "#185FA5", cursor: "pointer", fontFamily: "inherit" }}>Kembali</button>
-                <button onClick={onNext} disabled={!tanggalMulai || !tanggalValid.has(tanggalMulai) || !semuaSudahPilih} style={{ padding: 14, background: (!tanggalMulai || !tanggalValid.has(tanggalMulai) || !semuaSudahPilih) ? "#B5D4F4" : "#185FA5", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: (!tanggalMulai || !tanggalValid.has(tanggalMulai) || !semuaSudahPilih) ? "not-allowed" : "pointer", fontFamily: "inherit" }}>Lanjut</button>
+                <button onClick={onNext} disabled={!tanggalMulai || !tanggalValid.has(tanggalMulai) || !semuaSudahPilih} style={{ padding: 14, background: (!tanggalMulai || !tanggalValid.has(tanggalMulai) || !semuaSudahPilih) ? "#B5D4F4" : "#185FA5", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: (!tanggalMulai || !tanggalValid.has(tanggalMulai) || !semuaSudahPilih) ? "not-allowed" : "pointer", fontFamily: "inherit" }}>Lanjut ke Pembayaran</button>
             </div>
         </div>
     );
 }
 
-function Step3({ guru, paket, jadwalDipilih, waktuMulai, tanggalMulai, catatan, onSubmit, onBack, loading }) {
+// QRIS dummy — pola kotak-kotak sederhana sebagai SVG gimmick
+function QrisGimmick({ nominal }) {
+    // Buat pattern QRIS sederhana dari string nominal sebagai seed
+    const seed = nominal.toString();
+    const cells = [];
+    const SIZE = 21;
+
+    // Corner squares (finder patterns) — 3 sudut khas QRIS
+    const isFinderPattern = (r, c) => {
+        const corners = [[0, 0], [0, SIZE - 7], [SIZE - 7, 0]];
+        return corners.some(([br, bc]) => r >= br && r < br + 7 && c >= bc && c < bc + 7 &&
+            ((r === br || r === br + 6 || c === bc || c === bc + 6) ||
+                (r >= br + 2 && r <= br + 4 && c >= bc + 2 && c <= bc + 4)));
+    };
+
+    // Data modules — deterministik dari nominal
+    for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+            if (isFinderPattern(r, c)) {
+                cells.push({ r, c, dark: true });
+            } else {
+                // pseudo-random tapi deterministik
+                const idx = (r * SIZE + c + parseInt(seed.slice(-4) || "1234")) % 7;
+                cells.push({ r, c, dark: idx < 3 });
+            }
+        }
+    }
+
+    const cellSize = 7;
+    const totalSize = SIZE * cellSize + 32;
+
+    return (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            {/* Header QRIS */}
+            <div style={{ background: "#fff", border: "2px solid #E6F1FB", borderRadius: 16, padding: 20, display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                {/* Logo QRIS */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 2, color: "#E24B4A" }}>QRIS</div>
+                    <div style={{ flex: 1, height: 1, background: "#E6F1FB" }} />
+                    <div style={{ fontSize: 10, color: "#aaa", fontWeight: 600 }}>Synau</div>
+                </div>
+
+                {/* QR Code SVG */}
+                <svg width={totalSize} height={totalSize} viewBox={`0 0 ${totalSize} ${totalSize}`} xmlns="http://www.w3.org/2000/svg">
+                    <rect width={totalSize} height={totalSize} fill="white" />
+                    {cells.map(({ r, c, dark }) => dark && (
+                        <rect key={`${r}-${c}`} x={16 + c * cellSize} y={16 + r * cellSize} width={cellSize - 1} height={cellSize - 1} rx={0.5} fill="#1a1a1a" />
+                    ))}
+                </svg>
+
+                {/* Nominal */}
+                <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>Total Pembayaran</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "#042C53" }}>{formatRupiah(nominal)}</div>
+                </div>
+
+                {/* Info bank */}
+                <div style={{ background: "#f5f8ff", borderRadius: 10, padding: "8px 16px", width: "100%", boxSizing: "border-box" }}>
+                    <div style={{ fontSize: 11, color: "#888", textAlign: "center" }}>Scan dengan aplikasi m-banking atau e-wallet apapun</div>
+                </div>
+            </div>
+
+            {/* Countdown timer gimmick */}
+            <div style={{ marginTop: 12, fontSize: 12, color: "#888", display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }} />
+                QR aktif · berlaku 15 menit
+            </div>
+
+            <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+        </div>
+    );
+}
+
+function Step3({ guru, paket, mapelDipilih, jadwalDipilih, waktuMulai, tanggalMulai, catatan, onSubmit, onBack, loading }) {
     const harga = paket === "mingguan" ? guru.harga.mingguan : guru.harga.bulanan;
+    const [sudahBayar, setSudahBayar] = useState(false);
+
+    const handleSudahBayar = () => {
+        setSudahBayar(true);
+        onSubmit();
+    };
+
     return (
         <div>
+            {/* Ringkasan */}
             <div style={s.card}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 16 }}>Ringkasan Booking</div>
                 {[
                     { label: "Guru", nilai: guru.nama },
-                    { label: "Mata Pelajaran", nilai: guru.mapel },
+                    { label: "Mata Pelajaran", nilai: mapelDipilih },
                     { label: "Paket", nilai: paket.charAt(0).toUpperCase() + paket.slice(1) },
                     { label: "Hari Belajar", nilai: jadwalDipilih.join(", ") },
                     { label: "Tanggal Mulai", nilai: new Date(tanggalMulai + 'T00:00:00').toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) },
@@ -344,10 +423,30 @@ function Step3({ guru, paket, jadwalDipilih, waktuMulai, tanggalMulai, catatan, 
                     <div style={{ fontSize: 22, fontWeight: 800, color: "#185FA5" }}>{formatRupiah(harga)}</div>
                 </div>
             </div>
+
+            {/* QRIS */}
+            <div style={{ ...s.card, textAlign: "center" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 4 }}>Pembayaran via QRIS</div>
+                <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>Scan QR di bawah menggunakan aplikasi m-banking atau e-wallet kamu</div>
+
+                <QrisGimmick nominal={harga} />
+
+                <div style={{ marginTop: 24, padding: "14px", background: "#FEF3E2", borderRadius: 12, fontSize: 13, color: "#633806", fontWeight: 600 }}>
+                    ⚠️ Pastikan nominal yang dibayar sesuai: <strong>{formatRupiah(harga)}</strong>
+                </div>
+            </div>
+
+            {/* Tombol */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12 }}>
-                <button onClick={onBack} style={{ padding: 14, background: "none", border: "1px solid #B5D4F4", borderRadius: 12, fontSize: 14, fontWeight: 600, color: "#185FA5", cursor: "pointer", fontFamily: "inherit" }}>Kembali</button>
-                <button onClick={onSubmit} disabled={loading} style={{ padding: 14, background: loading ? "#B5D4F4" : "#185FA5", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
-                    {loading ? "Memproses..." : "Konfirmasi Booking"}
+                <button onClick={onBack} disabled={loading} style={{ padding: 14, background: "none", border: "1px solid #B5D4F4", borderRadius: 12, fontSize: 14, fontWeight: 600, color: "#185FA5", cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+                    Kembali
+                </button>
+                <button
+                    onClick={handleSudahBayar}
+                    disabled={loading || sudahBayar}
+                    style={{ padding: 14, background: loading || sudahBayar ? "#B5D4F4" : "#1D9E75", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: loading || sudahBayar ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "background 0.2s" }}
+                >
+                    {loading ? "Memproses..." : sudahBayar ? "Memverifikasi..." : "✓ Sudah Bayar"}
                 </button>
             </div>
         </div>
@@ -360,7 +459,7 @@ function BookingBerhasil({ guru, onKeDashboard }) {
             <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#E1F5EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 20px" }}>✓</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: "#042C53", marginBottom: 8 }}>Booking Berhasil!</div>
             <div style={{ fontSize: 14, color: "#888", lineHeight: 1.7, maxWidth: 360, margin: "0 auto 32px" }}>
-                Permintaan booking kamu ke <strong style={{ color: "#042C53" }}>{guru.nama}</strong> telah terkirim. Guru akan mengkonfirmasi jadwal dalam 1×24 jam.
+                Pembayaran diterima. Permintaan booking kamu ke <strong style={{ color: "#042C53" }}>{guru.nama}</strong> telah terkirim. Guru akan mengkonfirmasi jadwal dalam 1×24 jam.
             </div>
             <button onClick={onKeDashboard} style={{ padding: "12px 32px", background: "#185FA5", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 Kembali ke Dashboard
@@ -383,6 +482,7 @@ export default function Booking() {
     const [step, setStep] = useState(0);
     const [guru] = useState(guruDariState);
     const [paket, setPaket] = useState(paketDariState);
+    const [mapelDipilih, setMapelDipilih] = useState("");
     const [jadwalDipilih, setJadwalDipilih] = useState([]);
     const [waktuMulai, setWaktuMulai] = useState({});
     const [tanggalMulai, setTanggalMulai] = useState("");
@@ -398,6 +498,7 @@ export default function Booking() {
             await api.post('/booking', {
                 guru_id: guru.id,
                 paket: paket,
+                mata_pelajaran: mapelDipilih,
                 hari_dipilih: jadwalDipilih,
                 waktu_mulai: waktuMulai,
                 tanggal_mulai: tanggalMulai,
@@ -440,7 +541,12 @@ export default function Booking() {
                 {berhasil ? (
                     <BookingBerhasil guru={guru} onKeDashboard={() => navigate("/dashboard")} />
                 ) : step === 0 ? (
-                    <Step1 guru={guru} paket={paket} setPaket={setPaket} jadwalDipilih={jadwalDipilih} setJadwalDipilih={setJadwalDipilih} onNext={() => setStep(1)} />
+                    <Step1
+                        guru={guru} paket={paket} setPaket={setPaket}
+                        mapelDipilih={mapelDipilih} setMapelDipilih={setMapelDipilih}
+                        jadwalDipilih={jadwalDipilih} setJadwalDipilih={setJadwalDipilih}
+                        onNext={() => setStep(1)}
+                    />
                 ) : step === 1 ? (
                     <Step2
                         guru={guru} jadwalDipilih={jadwalDipilih}
@@ -451,8 +557,9 @@ export default function Booking() {
                     />
                 ) : (
                     <Step3
-                        guru={guru} paket={paket} jadwalDipilih={jadwalDipilih}
-                        waktuMulai={waktuMulai} tanggalMulai={tanggalMulai} catatan={catatan}
+                        guru={guru} paket={paket} mapelDipilih={mapelDipilih}
+                        jadwalDipilih={jadwalDipilih} waktuMulai={waktuMulai}
+                        tanggalMulai={tanggalMulai} catatan={catatan}
                         onSubmit={handleSubmit} onBack={() => setStep(1)} loading={loading}
                     />
                 )}
