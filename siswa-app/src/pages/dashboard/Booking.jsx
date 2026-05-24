@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import api from '../../services/api';
-import { createActivityLog, createChatRoom } from '../../services/firestoreService';
+import { createActivityLog, createChatRoom, createInboxNotification } from '../../services/firestoreService';
 
 const HARI_URUT = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 const HARI_KE_JS = { "Minggu": 0, "Senin": 1, "Selasa": 2, "Rabu": 3, "Kamis": 4, "Jumat": 5, "Sabtu": 6 };
@@ -487,6 +487,18 @@ export default function Booking() {
             });
 
             createChatRoom(bookingId, siswa, guru, mapelDipilih);
+            
+            // Notifikasi ke guru & admin
+            createInboxNotification(
+                "guru",
+                "Booking Baru Diterima",
+                `Siswa ${siswa.name || siswa.nama_panggilan} telah membooking paket ${paket} untuk mata pelajaran ${mapelDipilih}. Silakan cek jadwal Anda.`
+            );
+            createInboxNotification(
+                "admin",
+                "Booking Baru",
+                `Siswa ${siswa.name || siswa.nama_panggilan} membooking guru ${guru.nama}.`
+            );
             
             setBerhasil(true);
         } catch (err) {

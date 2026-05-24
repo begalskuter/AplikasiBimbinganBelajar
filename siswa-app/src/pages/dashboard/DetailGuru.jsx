@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import api from '../../services/api';
 import useFavorit from '../../hooks/useFavorit';
-import { listenReviews, submitReview, createActivityLog } from '../../services/firestoreService';
+import { listenReviews, submitReview, createActivityLog, getOrCreateChatByUsers } from '../../services/firestoreService';
+import InboxBell from "../../components/InboxBell";
 
 const warnaList = [
     { bg: "#185FA5", text: "#fff" },
@@ -40,6 +41,30 @@ function BookingCard({ guru, isFavorit, onToggleFavorit }) {
 
     const handleBooking = () => {
         navigate(`/booking/${guru.id}`, { state: { guru, paket } });
+    };
+
+    const handleChat = async () => {
+        const siswa = JSON.parse(localStorage.getItem('user'));
+        if (!siswa) {
+            alert("Harap login terlebih dahulu untuk chat.");
+            return;
+        }
+        
+        try {
+            const chatId = await getOrCreateChatByUsers(
+                guru.user_id || guru.id, // pastikan backend return user_id
+                siswa.id,
+                guru.nama,
+                siswa.name || siswa.nama_panggilan || "Siswa",
+                guru.mapel,
+                guru.foto_profil || "",
+                siswa.foto_url || ""
+            );
+            navigate(`/chat?chatId=${chatId}`);
+        } catch (error) {
+            console.error("Gagal membuka chat:", error);
+            alert("Gagal membuka chat.");
+        }
     };
 
     return (
@@ -87,9 +112,17 @@ function BookingCard({ guru, isFavorit, onToggleFavorit }) {
                 {/* Tombol Favorit */}
                 <button
                     onClick={onToggleFavorit}
-                    style={{ width: "100%", padding: 11, background: isFavorit ? "#FEF3E2" : "none", border: `1px solid ${isFavorit ? "#FAC775" : "#B5D4F4"}`, borderRadius: 12, fontSize: 13, fontWeight: 600, color: isFavorit ? "#633806" : "#185FA5", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}
+                    style={{ width: "100%", padding: 11, background: isFavorit ? "#FEF3E2" : "none", border: `1px solid ${isFavorit ? "#FAC775" : "#B5D4F4"}`, borderRadius: 12, fontSize: 13, fontWeight: 600, color: isFavorit ? "#633806" : "#185FA5", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s", marginBottom: 10 }}
                 >
                     {isFavorit ? "❤️ Tersimpan sebagai Favorit" : "🤍 Tambah ke Favorit"}
+                </button>
+
+                {/* Tombol Chat */}
+                <button
+                    onClick={handleChat}
+                    style={{ width: "100%", padding: 11, background: "#fff", border: "1px solid #1D9E75", borderRadius: 12, fontSize: 13, fontWeight: 600, color: "#1D9E75", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}
+                >
+                    💬 Chat Guru
                 </button>
             </div>
 
@@ -222,6 +255,10 @@ export default function DetailGuru() {
         setNewRating(5);
     };
 
+    const combinedRatingRaw = guru.totalUlasan + firebaseReviews.length === 0 ? 0 : 
+        ((guru.rating * guru.totalUlasan) + firebaseReviews.reduce((sum, r) => sum + Number(r.rating), 0)) / (guru.totalUlasan + firebaseReviews.length);
+    const combinedRating = combinedRatingRaw > 0 ? combinedRatingRaw.toFixed(1) : 0;
+
     return (
         <div style={s.page}>
             <nav style={s.navbar}>
@@ -231,7 +268,10 @@ export default function DetailGuru() {
                     </button>
                     <div style={s.logo}>Syn<span style={{ color: "#378ADD" }}>au</span></div>
                 </div>
-                <div style={s.avatarBox("#185FA5", "#fff", 34)}>{inisialSiswa}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <InboxBell role="siswa" />
+                    <div style={s.avatarBox("#185FA5", "#fff", 34)}>{inisialSiswa}</div>
+                </div>
             </nav>
 
             <div style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px", display: "grid", gridTemplateColumns: "1fr 300px", gap: 24, alignItems: "start" }}>
@@ -248,8 +288,8 @@ export default function DetailGuru() {
                                 <div style={{ fontSize: 22, fontWeight: 800, color: "#042C53", letterSpacing: "-0.5px" }}>{guru.nama}</div>
                                 <div style={{ fontSize: 14, color: "#888", marginTop: 4 }}>{guru.mapel} · {guru.kota}</div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-                                    <span style={s.badge("#E6F1FB", "#0C447C")}>★ {guru.rating}</span>
-                                    <span style={{ fontSize: 13, color: "#aaa" }}>{guru.totalUlasan} ulasan</span>
+                                    <span style={s.badge("#E6F1FB", "#0C447C")}>★ {combinedRating}</span>
+                                    <span style={{ fontSize: 13, color: "#aaa" }}>{guru.totalUlasan + firebaseReviews.length} ulasan</span>
                                     {guru.terverifikasi && <span style={s.badge("#E1F5EE", "#085041")}>Terverifikasi ✓</span>}
                                 </div>
                             </div>
@@ -280,7 +320,7 @@ export default function DetailGuru() {
                     <div style={s.card}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                             <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53" }}>Ulasan Siswa <span style={{fontSize: 11, background: '#E6F1FB', color: '#185FA5', padding: '2px 8px', borderRadius: 8, marginLeft: 8}}>Realtime</span></div>
-                            <span style={s.badge("#E6F1FB", "#0C447C")}>★ {guru.rating} · {guru.totalUlasan + firebaseReviews.length} ulasan</span>
+                            <span style={s.badge("#E6F1FB", "#0C447C")}>★ {combinedRating} · {guru.totalUlasan + firebaseReviews.length} ulasan</span>
                         </div>
 
                         {/* Input Ulasan Baru */}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from '../../services/api';
+import InboxBell from "../../components/InboxBell";
 
 const warnaList = [
     { bg: "#185FA5", text: "#fff" },
@@ -105,8 +106,11 @@ export default function CariGuru() {
                     </button>
                     <div style={s.logo}>Syn<span style={{ color: "#378ADD" }}>au</span></div>
                 </div>
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#185FA5", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: "#fff" }}>
-                    {inisialSiswa}
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <InboxBell role="siswa" />
+                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#185FA5", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, color: "#fff" }}>
+                        {inisialSiswa}
+                    </div>
                 </div>
             </nav>
 

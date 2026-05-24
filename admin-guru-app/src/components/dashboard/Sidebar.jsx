@@ -5,6 +5,7 @@ const menuItems = [
   { id: 'profil', label: 'Profil & Mapel', icon: 'ti-user-edit' },
   { id: 'jadwal', label: 'Jadwal Mengajar', icon: 'ti-calendar-event' },
   { id: 'siswa', label: 'Siswa & Booking', icon: 'ti-users' },
+  { id: 'pesan', label: 'Pesan', icon: 'ti-messages' },
   { id: 'pembayaran', label: 'Pembayaran', icon: 'ti-credit-card' },
 ];
 

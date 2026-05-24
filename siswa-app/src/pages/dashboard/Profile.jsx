@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import useFavorit from "../../hooks/useFavorit";
+import InboxBell from "../../components/InboxBell";
 
 /* ─── Warna avatar (sama seperti Dashboard) ─── */
 const warnaList = [
@@ -137,6 +138,7 @@ function Navbar({ siswa, onBack, onLogout }) {
                 </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <InboxBell role="siswa" />
                 <span style={{ fontSize: 13, color: "#555" }}>
                     Halo, <strong style={{ color: "#042C53" }}>{siswa?.nama_panggilan || siswa?.name}!</strong>
                 </span>

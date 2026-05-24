@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp, setDoc, doc } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp, setDoc, doc, getDoc } from "firebase/firestore";
 
 const safeFirestoreEvent = async (operation, context = "") => {
   try {
@@ -16,14 +16,39 @@ export const listenInboxByRole = (role, callback) => {
   try {
     const q = query(
       collection(db, "inbox"),
-      where("role", "==", role),
-      orderBy("created_at", "desc")
+      where("role", "==", role)
     );
     return onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      data.sort((a, b) => {
+        const timeA = a.created_at?.toMillis?.() || 0;
+        const timeB = b.created_at?.toMillis?.() || 0;
+        return timeB - timeA;
+      });
       callback(data);
     }, (error) => { console.warn("Error listening inbox", error); });
   } catch (error) { console.warn("Failed inbox listener", error); return () => {}; }
+};
+
+export const createInboxNotification = async (role, title, message, link = "") => {
+  return safeFirestoreEvent(async () => {
+    await addDoc(collection(db, "inbox"), {
+      role: role,
+      title: title,
+      message: message,
+      link: link,
+      is_read: false,
+      created_at: serverTimestamp()
+    });
+    return true;
+  }, "createInboxNotification");
+};
+
+export const markInboxAsRead = async (id) => {
+  return safeFirestoreEvent(async () => {
+    await setDoc(doc(db, "inbox", id), { is_read: true }, { merge: true });
+    return true;
+  }, "markInboxAsRead");
 };
 
 // 2. Activity Logs
@@ -69,23 +94,47 @@ export const createChatRoom = async (bookingId, siswa, guru, mapel) => {
       guru_name: guru.nama || guru.name || "Guru",
       guru_avatar: guru.foto_profil || guru.foto_url || "",
       mata_pelajaran: mapel || "",
-      created_at: serverTimestamp(),
-      last_message: "Halo, saya baru saja melakukan booking sesi bimbingan.",
+      last_message: "",
       last_message_time: serverTimestamp(),
-      unread_guru: 1,
-      unread_siswa: 0
+      unread_siswa: 0,
+      unread_guru: 1
     });
 
-    // Create initial automated message
+    // Add initial message
     await addDoc(collection(chatRef, "messages"), {
       sender_id: siswa.id,
       sender_role: "siswa",
-      text: "Halo, saya baru saja melakukan booking sesi bimbingan.",
+      text: `Halo, saya baru saja melakukan booking untuk mata pelajaran ${mapel || 'pilihan saya'}. Mohon konfirmasinya ya!`,
       created_at: serverTimestamp()
     });
 
-    return chatRef.id;
+    return true;
   }, "createChatRoom");
+};
+
+export const getOrCreateChatByUsers = async (guruUserId, siswaUserId, guruName, siswaName, mapel, guruAvatar = "", siswaAvatar = "") => {
+  return safeFirestoreEvent(async () => {
+    const chatId = `chat_${guruUserId}_${siswaUserId}`;
+    const chatRef = doc(db, "chats", chatId);
+    const snap = await getDoc(chatRef);
+    
+    if (!snap.exists()) {
+      await setDoc(chatRef, {
+        siswa_id: siswaUserId,
+        siswa_name: siswaName,
+        siswa_avatar: siswaAvatar,
+        guru_id: guruUserId,
+        guru_name: guruName,
+        guru_avatar: guruAvatar,
+        mata_pelajaran: mapel || "Diskusi",
+        last_message: "",
+        last_message_time: serverTimestamp(),
+        unread_siswa: 0,
+        unread_guru: 0
+      });
+    }
+    return chatId;
+  }, "getOrCreateChatByUsers");
 };
 
 // 4. Reviews (Live update in DetailGuru)

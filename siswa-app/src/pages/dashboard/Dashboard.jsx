@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from '../../services/api';
 import useFavorit from '../../hooks/useFavorit';
+import InboxBell from "../../components/InboxBell";
 
 const warnaList = [
     { bg: "#185FA5", text: "#fff" },
@@ -32,6 +33,7 @@ function Navbar({ siswa, onLogout, onProfil }) {
         <nav style={s.navbar}>
             <div style={s.logo}>Syn<span style={{ color: "#378ADD" }}>au</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <InboxBell role="siswa" />
                 {/* Klik nama atau avatar → ke halaman profil */}
                 <div
                     onClick={onProfil}
@@ -186,7 +188,7 @@ function GuruFavoritList({ guruList, onLihat }) {
     );
 }
 
-import ChatWidget from "../../components/ChatWidget";
+
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -277,8 +279,6 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
-            {/* Chat Widget ditaruh di level root Dashboard agar selalu melayang */}
-            {siswa?.id && <ChatWidget role="siswa" userId={siswa.id} />}
         </div>
     );
 }

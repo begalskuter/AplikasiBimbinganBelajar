@@ -7,6 +7,8 @@ import ProfilGuru from '../../components/dashboard/ProfilGuru';
 import JadwalGuru from '../../components/dashboard/JadwalGuru';
 import SiswaBooking from '../../components/dashboard/SiswaBooking';
 import Pembayaran from '../../components/dashboard/Pembayaran';
+import ChatPageGuru from './ChatPageGuru';
+import InboxBell from '../../components/InboxBell';
 
 export default function GuruDashboard() {
   const [activePage, setActivePage] = useState('overview');
@@ -92,6 +94,8 @@ export default function GuruDashboard() {
         return <JadwalGuru guruData={guruData} onUpdate={fetchData} />;
       case 'siswa':
         return <SiswaBooking />;
+      case 'pesan':
+        return <ChatPageGuru guruData={guruData} />;
       case 'pembayaran':
         return <Pembayaran />;
       default:
@@ -102,8 +106,13 @@ export default function GuruDashboard() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f4f7fb' }}>
       <Sidebar activePage={activePage} onNavigate={setActivePage} guruData={guruData} onLogout={handleLogout} />
-      <div style={{ flex: 1, marginLeft: 272, padding: '36px 48px' }}>
-        <div style={{ maxWidth: 1040, margin: '0 auto' }}>{renderContent()}</div>
+      <div style={{ flex: 1, marginLeft: 272, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px 48px', borderBottom: '1px solid #E2E8F0', background: '#fff' }}>
+          <InboxBell role={guruData?.role || 'guru'} />
+        </div>
+        <div style={{ padding: '36px 48px' }}>
+          <div style={{ maxWidth: 1040, margin: '0 auto' }}>{renderContent()}</div>
+        </div>
       </div>
     </div>
   );

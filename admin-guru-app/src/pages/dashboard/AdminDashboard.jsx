@@ -9,6 +9,7 @@ import KelasJadwal from "../../components/admin/KelasJadwal";
 import PembayaranAdmin from "../../components/admin/PembayaranAdmin";
 import GajiGuru from "../../components/admin/GajiGuru";
 import LaporanAdmin from "../../components/admin/LaporanAdmin";
+import InboxBell from "../../components/InboxBell";
 
 export default function AdminDashboard() {
   const [activePage, setActivePage] = useState("overview");
@@ -75,15 +76,13 @@ export default function AdminDashboard() {
         onLogout={handleLogout}
         pendingCount={pendingVerificationCount}
       />
-      <div style={{
-        flex: 1,
-        marginLeft: 272,
-        padding: "36px 48px",
-        height: "100vh",
-        overflowY: "auto",
-        boxSizing: "border-box"
-      }}>
-        {renderContent()}
+      <div style={{ flex: 1, marginLeft: 272, display: 'flex', flexDirection: 'column', height: "100vh", boxSizing: "border-box" }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px 48px', borderBottom: '1px solid #E2E8F0', background: '#fff' }}>
+          <InboxBell role="admin" />
+        </div>
+        <div style={{ padding: "36px 48px", overflowY: "auto", flex: 1 }}>
+          {renderContent()}
+        </div>
       </div>
     </div>
   );
