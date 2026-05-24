@@ -59,17 +59,22 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Email atau password salah.'],
-            ]);
+            return response()->json(['message' => 'Email atau password salah.'], 401);
+        }
+
+        // ← Tambahkan ini
+        if (in_array($user->role, ['guru']) && !$user->is_verified) {
+            return response()->json([
+                'message' => 'Akun kamu belum diverifikasi admin. Silakan tunggu 1-3 hari kerja.',
+                'status'  => 'pending',
+            ], 403);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Login berhasil',
-            'token'   => $token,
-            'user'    => $user,
+            'token' => $token,
+            'user'  => $user,
         ]);
     }
 

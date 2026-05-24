@@ -46,6 +46,50 @@ function InputField({ label, type = "text", placeholder, value, onChange, style 
   );
 }
 
+function PasswordInput({ label, placeholder, value, onChange, focused, onFocus, onBlur, disabled }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <div style={{ position: "relative" }}>
+        <input
+          type={show ? "text" : "password"}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          disabled={disabled}
+          style={{ ...inputStyle, paddingRight: "42px", borderColor: focused ? "#1565C0" : "#e0e0e0" }}
+        />
+        <button
+          type="button"
+          onClick={() => setShow(!show)}
+          aria-label={show ? "Sembunyikan password" : "Tampilkan password"}
+          style={{
+            position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
+            background: "none", border: "none", cursor: "pointer",
+            color: "#999", padding: "4px", display: "flex", alignItems: "center",
+          }}
+        >
+          {show ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function FileUploadField({ label, accept, description, icon, onChange, fileName }) {
   const [dragOver, setDragOver] = useState(false);
 
@@ -102,8 +146,10 @@ function FileUploadField({ label, accept, description, icon, onChange, fileName 
 
 function LoginForm({ onClose }) {
   const [form, setForm] = useState({ email: "", password: "" });
+  const [focused, setFocused] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
@@ -113,6 +159,7 @@ function LoginForm({ onClose }) {
     }
     setLoading(true);
     setError("");
+    setPending(false);
     try {
       const res = await api.post("/auth/login", form);
       const { token, user } = res.data;
@@ -122,24 +169,62 @@ function LoginForm({ onClose }) {
 
       onClose();
 
-      // Redirect otomatis berdasarkan role — tanpa pemilihan role manual
       const role = user?.role;
       if (role === "admin") {
         navigate("/admin/dashboard");
       } else if (role === "guru") {
         navigate("/dashboardguru");
       } else {
-        // Kalau role tidak dikenali (misal siswa login di sini)
         setError("Akun ini bukan akun guru atau admin.");
         localStorage.removeItem("token");
         localStorage.removeItem("user");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Login gagal. Periksa kembali email dan password Anda.");
+      // 403 + status "pending" = guru belum diverifikasi admin
+      if (err.response?.status === 403 && err.response?.data?.status === "pending") {
+        setPending(true);
+      } else {
+        setError(err.response?.data?.message || "Login gagal. Periksa kembali email dan password Anda.");
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Tampilan khusus akun masih menunggu verifikasi
+  if (pending) {
+    return (
+      <div style={{ textAlign: "center", padding: "12px 0" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#FEF3E2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 28 }}>
+          ⏳
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#042C53", marginBottom: 10 }}>
+          Akun Sedang Diverifikasi
+        </div>
+        <p style={{ fontSize: 14, color: "#777", lineHeight: 1.7, marginBottom: 8 }}>
+          Pendaftaranmu sudah kami terima. Tim admin sedang memeriksa dokumenmu.
+        </p>
+        <p style={{ fontSize: 13, color: "#aaa", lineHeight: 1.6, marginBottom: 24 }}>
+          Proses verifikasi membutuhkan{" "}
+          <strong style={{ color: "#633806" }}>1–3 hari kerja</strong>.<br />
+          Kamu akan bisa login setelah akun disetujui admin.
+        </p>
+        <div style={{ background: "#FEF3E2", border: "1px solid #FAC775", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "#633806", marginBottom: 20, textAlign: "left", display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
+          <span>
+            Jika sudah lebih dari 3 hari kerja dan belum ada konfirmasi, hubungi kami di{" "}
+            <strong>admin@synau.id</strong>
+          </span>
+        </div>
+        <button
+          onClick={() => setPending(false)}
+          style={{ width: "100%", padding: "12px", background: "none", border: "1px solid #B5D4F4", borderRadius: 10, fontSize: 14, fontWeight: 600, color: "#185FA5", cursor: "pointer", fontFamily: "inherit" }}
+        >
+          Kembali ke Login
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -153,12 +238,14 @@ function LoginForm({ onClose }) {
         />
       </div>
       <div style={{ marginBottom: "8px" }}>
-        <InputField
+        <PasswordInput
           label="Password"
-          type="password"
           placeholder="Masukkan password"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
+          focused={focused === "password"}
+          onFocus={() => setFocused("password")}
+          onBlur={() => setFocused(null)}
         />
       </div>
       {error && (
@@ -208,11 +295,7 @@ function RegisterForm({ onRegisterSuccess }) {
     provinsi: "",
     password: "",
   });
-  const [files, setFiles] = useState({
-    cv: null,
-    ktp: null,
-    ijazah: null,
-  });
+  const [files, setFiles] = useState({ cv: null, ktp: null, ijazah: null });
   const [focusedField, setFocusedField] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -265,10 +348,9 @@ function RegisterForm({ onRegisterSuccess }) {
       onRegisterSuccess();
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-          err.response?.data?.errors
+        err.response?.data?.errors
           ? Object.values(err.response.data.errors).flat().join(" ")
-          : "Gagal mendaftar. Silakan coba lagi."
+          : err.response?.data?.message || "Gagal mendaftar. Silakan coba lagi."
       );
     } finally {
       setLoading(false);
@@ -315,7 +397,6 @@ function RegisterForm({ onRegisterSuccess }) {
         </div>
       </div>
 
-      {/* Alamat Lengkap */}
       <div style={{ marginBottom: "14px" }}>
         <label style={labelStyle}>Alamat Lengkap <span style={{ color: "#aaa", fontWeight: 400 }}>(Nama jalan, nomor rumah)</span></label>
         <textarea
@@ -330,45 +411,39 @@ function RegisterForm({ onRegisterSuccess }) {
         />
       </div>
 
-      {/* Kelurahan & Kecamatan */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
         <div>
           <label style={labelStyle}>Kelurahan</label>
-          <input
-            type="text" placeholder="Giwangan"
-            {...field("kelurahan")} disabled={showTNC}
-          />
+          <input type="text" placeholder="Giwangan" {...field("kelurahan")} disabled={showTNC} />
         </div>
         <div>
           <label style={labelStyle}>Kecamatan</label>
-          <input
-            type="text" placeholder="Umbulharjo"
-            {...field("kecamatan")} disabled={showTNC}
-          />
+          <input type="text" placeholder="Umbulharjo" {...field("kecamatan")} disabled={showTNC} />
         </div>
       </div>
 
-      {/* Kota & Provinsi */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
         <div>
           <label style={labelStyle}>Kota / Kabupaten</label>
-          <input
-            type="text" placeholder="Yogyakarta"
-            {...field("kota")} disabled={showTNC}
-          />
+          <input type="text" placeholder="Yogyakarta" {...field("kota")} disabled={showTNC} />
         </div>
         <div>
           <label style={labelStyle}>Provinsi</label>
-          <input
-            type="text" placeholder="DI Yogyakarta"
-            {...field("provinsi")} disabled={showTNC}
-          />
+          <input type="text" placeholder="DI Yogyakarta" {...field("provinsi")} disabled={showTNC} />
         </div>
       </div>
 
       <div style={{ marginBottom: "20px" }}>
-        <label style={labelStyle}>Password</label>
-        <input type="password" placeholder="Min. 8 karakter" {...field("password")} disabled={showTNC} />
+        <PasswordInput
+          label="Password"
+          placeholder="Min. 8 karakter"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          focused={focusedField === "password"}
+          onFocus={() => setFocusedField("password")}
+          onBlur={() => setFocusedField(null)}
+          disabled={showTNC}
+        />
       </div>
 
       <div style={{ borderTop: "1px solid #e8e8e8", margin: "8px 0 20px", position: "relative" }}>
@@ -537,45 +612,60 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          style={{ background: "#fff", borderRadius: "20px", width: "100%", maxWidth: "480px", padding: "40px", position: "relative", maxHeight: "90vh", overflowY: "auto", fontFamily: "'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif", animation: "modalSlide 0.3s ease-out" }}
+          style={{
+            background: "#fff",
+            borderRadius: "20px",
+            width: "100%",
+            maxWidth: "480px",
+            position: "relative",
+            maxHeight: "90vh",
+            display: "flex",
+            flexDirection: "column",
+            fontFamily: "'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif",
+            animation: "modalSlide 0.3s ease-out",
+          }}
         >
-          <button
-            onClick={onClose}
-            style={{ position: "absolute", top: "16px", right: "16px", background: "#f5f5f5", border: "none", borderRadius: "50%", width: "32px", height: "32px", fontSize: "18px", color: "#666", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.2s", zIndex: 1 }}
-          >
-            ×
-          </button>
+          {/* HEADER — tidak ikut scroll */}
+          <div style={{ padding: "36px 40px 0", flexShrink: 0 }}>
+            <button
+              onClick={onClose}
+              style={{ position: "absolute", top: "16px", right: "16px", background: "#f5f5f5", border: "none", borderRadius: "50%", width: "32px", height: "32px", fontSize: "18px", color: "#666", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.2s", zIndex: 1 }}
+            >
+              ×
+            </button>
 
-          {showSuccess ? (
-            <SuccessMessage onClose={onClose} />
-          ) : (
-            <>
-              <div style={{ textAlign: "center", marginBottom: "28px" }}>
-                <div style={{ fontSize: "26px", fontWeight: "800", color: "#1565C0", letterSpacing: "-0.5px", marginBottom: "4px" }}>Synau</div>
-                <div style={{ fontSize: "20px", fontWeight: "700", color: "#1a1a1a", marginBottom: "4px" }}>
-                  {activeTab === "login" ? "Masuk ke Akun" : "Daftar sebagai Guru"}
+            {!showSuccess && (
+              <>
+                <div style={{ textAlign: "center", marginBottom: "24px" }}>
+                  <div style={{ fontSize: "26px", fontWeight: "800", color: "#1565C0", letterSpacing: "-0.5px", marginBottom: "4px" }}>Synau</div>
+                  <div style={{ fontSize: "20px", fontWeight: "700", color: "#1a1a1a", marginBottom: "4px" }}>
+                    {activeTab === "login" ? "Masuk ke Akun" : "Daftar sebagai Guru"}
+                  </div>
+                  <div style={{ fontSize: "14px", color: "#777" }}>
+                    {activeTab === "login"
+                      ? "Guru & Admin masuk di sini."
+                      : "Lengkapi data dan dokumen untuk mendaftar."}
+                  </div>
                 </div>
-                <div style={{ fontSize: "14px", color: "#777" }}>
-                  {activeTab === "login"
-                    ? "Guru & Admin masuk di sini."
-                    : "Lengkapi data dan dokumen untuk mendaftar."}
+
+                <div style={{ display: "flex", background: "#f0f4ff", borderRadius: "12px", padding: "4px", marginBottom: "20px" }}>
+                  <button style={tabBtn("login")} onClick={() => setActiveTab("login")}>Masuk</button>
+                  <button style={tabBtn("register")} onClick={() => setActiveTab("register")}>Daftar</button>
                 </div>
-              </div>
+              </>
+            )}
+          </div>
 
-              <div style={{ display: "flex", background: "#f0f4ff", borderRadius: "12px", padding: "4px", marginBottom: "28px" }}>
-                <button style={tabBtn("login")} onClick={() => setActiveTab("login")}>Masuk</button>
-                <button style={tabBtn("register")} onClick={() => setActiveTab("register")}>Daftar</button>
-              </div>
-
-              {activeTab === "login" ? (
-                <LoginForm onClose={onClose} />
-              ) : (
-                <RegisterForm
-                  onRegisterSuccess={() => setShowSuccess(true)}
-                />
-              )}
-            </>
-          )}
+          {/* FORM — bagian yang scroll */}
+          <div style={{ padding: "0 40px 36px", overflowY: "auto", flex: 1 }}>
+            {showSuccess ? (
+              <SuccessMessage onClose={onClose} />
+            ) : activeTab === "login" ? (
+              <LoginForm onClose={onClose} />
+            ) : (
+              <RegisterForm onRegisterSuccess={() => setShowSuccess(true)} />
+            )}
+          </div>
         </div>
       </div>
     </>
