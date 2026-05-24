@@ -16,21 +16,12 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Auth check: Pastikan user login dan role-nya admin.
-    // Jika tidak ada session, kita otomatis buat mock session agar langsung bisa diakses.
-    let userStr = localStorage.getItem("user");
-    let token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
 
     if (!token || !userStr) {
-      const mockUser = {
-        name: "Super Admin (Bypass)",
-        email: "admin@synau.com",
-        role: "admin"
-      };
-      localStorage.setItem("token", "mock-token-admin");
-      localStorage.setItem("user", JSON.stringify(mockUser));
-      token = "mock-token-admin";
-      userStr = JSON.stringify(mockUser);
+      navigate("/");
+      return;
     }
 
     try {
@@ -86,7 +77,7 @@ export default function AdminDashboard() {
       />
       <div style={{
         flex: 1,
-        marginLeft: 272, // Lebar sidebar
+        marginLeft: 272,
         padding: "36px 48px",
         height: "100vh",
         overflowY: "auto",
