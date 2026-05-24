@@ -8,13 +8,14 @@ class Booking extends Model
 {
     protected $fillable = [
         'siswa_id', 'guru_id', 'paket', 'hari_dipilih',
-        'waktu_mulai', 'tanggal_mulai', 'catatan', 'status', 'total_harga',
+        'waktu_mulai', 'tanggal_mulai', 'catatan', 'status', 'total_harga', 'mata_pelajaran', 'status_pembayaran', 'paid_at',
     ];
 
     protected $casts = [
         'hari_dipilih' => 'array',
         'waktu_mulai'  => 'array',
         'tanggal_mulai' => 'date',
+        'paid_at' => 'datetime',
     ];
 
     public function siswa()

@@ -17,6 +17,7 @@ class User extends Authenticatable
         'alamat_lengkap', 'kelurahan', 'kecamatan',
         'kota', 'provinsi', 'role', 'foto_url',
         'cv_url', 'ktp_url', 'ijazah_url', 'is_verified',
+        'is_active', 'rejected_at', 'reject_reason',  // ← tambahan
     ];
 
     protected $hidden = [
@@ -27,7 +28,10 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
+            'is_active'         => 'boolean',
+            'is_verified'       => 'boolean',
+            'rejected_at'       => 'datetime',
         ];
     }
 

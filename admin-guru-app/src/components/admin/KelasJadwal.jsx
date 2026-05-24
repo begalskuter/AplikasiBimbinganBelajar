@@ -1,22 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../../services/api'; // pastikan path sesuai
 
 const hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
-const mockKelas = [
-  { id: 1, guru: 'Dewi Puspitasari', siswa: 'Budi Santoso', mataPelajaran: 'Matematika SMP', hari: ['Senin', 'Kamis'], waktu: '14:00', paket: 'Bulanan', status: 'aktif' },
-  { id: 2, guru: 'Ahmad Ridwan', siswa: 'Siti Aminah', mataPelajaran: 'Fisika SMA', hari: ['Selasa'], waktu: '09:00', paket: 'Mingguan', status: 'aktif' },
-  { id: 3, guru: 'Siti Nurhaliza', siswa: 'Andi Maulana', mataPelajaran: 'Kimia SMA', hari: ['Rabu', 'Sabtu'], waktu: '16:00', paket: 'Bulanan', status: 'aktif' },
-  { id: 4, guru: 'Budi Kurniawan', siswa: 'Rina Putri', mataPelajaran: 'B. Inggris SMA', hari: ['Jumat'], waktu: '10:00', paket: 'Mingguan', status: 'selesai' },
-  { id: 5, guru: 'Dewi Puspitasari', siswa: 'Dimas Prasetyo', mataPelajaran: 'Matematika SMA', hari: ['Selasa', 'Jumat'], waktu: '16:00', paket: 'Bulanan', status: 'aktif' },
-  { id: 6, guru: 'Hendra Wijaya', siswa: 'Lina Marlina', mataPelajaran: 'Matematika SMP', hari: ['Senin'], waktu: '09:00', paket: 'Mingguan', status: 'aktif' },
-];
-
 export default function KelasJadwal() {
   const [activeTab, setActiveTab] = useState('kelas');
-  const [kelas] = useState(mockKelas);
+  const [kelas, setKelas] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState(null);
 
-  const kelasOnDay = selectedDay ? kelas.filter(k => k.hari.includes(selectedDay) && k.status === 'aktif') : [];
+  useEffect(() => {
+    const fetchKelas = async () => {
+      try {
+        const response = await api.get('/admin/kelas-jadwal');
+        setKelas(response.data);
+      } catch (error) {
+        console.error('Gagal ambil data kelas:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchKelas();
+  }, []);
+
+  const kelasAktif = kelas.filter(k => k.status === 'aktif');
+  const kelasSelesai = kelas.filter(k => k.status === 'selesai');
+  const kelasOnDay = selectedDay
+    ? kelasAktif.filter(k => k.hari.includes(selectedDay))
+    : [];
+
+  if (loading) {
+    return <div style={{ padding: 24, textAlign: 'center' }}>Memuat data kelas...</div>;
+  }
 
   return (
     <div>
@@ -33,8 +48,8 @@ export default function KelasJadwal() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 22 }}>
         {[
-          { label: 'Kelas Aktif', value: kelas.filter(k => k.status === 'aktif').length, accent: '#16a34a', icon: 'ti-book' },
-          { label: 'Kelas Selesai', value: kelas.filter(k => k.status === 'selesai').length, accent: '#64748b', icon: 'ti-check' },
+          { label: 'Kelas Aktif', value: kelasAktif.length, accent: '#16a34a', icon: 'ti-book' },
+          { label: 'Kelas Selesai', value: kelasSelesai.length, accent: '#64748b', icon: 'ti-check' },
         ].map(s => (
           <div key={s.label} style={{
             background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
@@ -109,7 +124,6 @@ export default function KelasJadwal() {
         </div>
       )}
 
-
       {/* TAB: Calendar */}
       {activeTab === 'calendar' && (
         <div style={{
@@ -125,7 +139,7 @@ export default function KelasJadwal() {
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               {hariList.map(h => {
-                const count = kelas.filter(k => k.hari.includes(h) && k.status === 'aktif').length;
+                const count = kelasAktif.filter(k => k.hari.includes(h)).length;
                 const isSelected = selectedDay === h;
                 return (
                   <button key={h} onClick={() => setSelectedDay(isSelected ? null : h)} style={{

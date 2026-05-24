@@ -1,48 +1,65 @@
 import { useState, useEffect } from 'react';
+import api from '../../services/api';
 
 export default function AdminOverview() {
   const [now, setNow] = useState(new Date());
+  const [data, setData] = useState({
+    totalGuru: 0,
+    totalSiswa: 0,
+    kelasAktif: 0,
+    pendingBayar: 0,
+    pendapatanBersih: 0,
+    menungguVerifikasi: 0,
+    siswaPerBulan: [],
+    recentActivities: [],
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const fetchOverview = async () => {
+      try {
+        const response = await api.get('/admin/overview');
+        setData(response.data);
+      } catch (error) {
+        console.error('Gagal ambil data overview:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOverview();
+  }, []);
+
   const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const todayName = dayNames[now.getDay()];
   const formatTime = (d) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+  const formatRupiah = (value) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+  };
+
+  if (loading) {
+    return <div style={{ padding: 24, textAlign: 'center' }}>Memuat dashboard...</div>;
+  }
+
   const summaryCards = [
-    { icon: 'ti-chalkboard', label: 'Total Guru', value: 48, change: '+5', accent: '#185FA5' },
-    { icon: 'ti-school', label: 'Total Siswa', value: 312, change: '+23', accent: '#7c3aed' },
-    { icon: 'ti-book', label: 'Kelas Aktif', value: 86, change: '+12', accent: '#16a34a' },
-    { icon: 'ti-clock-pause', label: 'Bayar Pending', value: 14, change: '-3', accent: '#ea580c' },
+    { icon: 'ti-chalkboard', label: 'Total Guru', value: data.totalGuru, change: '+5', accent: '#185FA5' },
+    { icon: 'ti-school', label: 'Total Siswa', value: data.totalSiswa, change: '+23', accent: '#7c3aed' },
+    { icon: 'ti-book', label: 'Kelas Aktif', value: data.kelasAktif, change: '+12', accent: '#16a34a' },
+    { icon: 'ti-clock-pause', label: 'Bayar Pending', value: data.pendingBayar, change: '-3', accent: '#ea580c' },
   ];
 
   const extraCards = [
-    { icon: 'ti-alert-triangle', label: 'Total Tunggakan', value: 'Rp 4.250.000', accent: '#dc2626' },
-    { icon: 'ti-user-plus', label: 'Menunggu Verifikasi', value: 7, accent: '#d97706' },
+    { icon: 'ti-wallet', label: 'Pendapatan Bersih Sistem', value: formatRupiah(data.pendapatanBersih), accent: '#dc2626' },
+    { icon: 'ti-user-plus', label: 'Menunggu Verifikasi', value: data.menungguVerifikasi, accent: '#d97706' },
   ];
 
-  const recentActivities = [
-    { icon: 'ti-user-check', text: 'Dewi Puspitasari telah diverifikasi sebagai guru', time: '5 menit lalu', color: '#16a34a' },
-    { icon: 'ti-credit-card', text: 'Pembayaran Rp 500.000 dari Budi Santoso (Konfirmasi)', time: '12 menit lalu', color: '#185FA5' },
-    { icon: 'ti-user-plus', text: 'Ahmad Ridwan mendaftar sebagai guru baru', time: '25 menit lalu', color: '#d97706' },
-    { icon: 'ti-calendar-check', text: 'Jadwal baru disetujui untuk Siti Nurhaliza', time: '1 jam lalu', color: '#7c3aed' },
-    { icon: 'ti-coin', text: 'Gaji guru bulan Mei telah dihitung (32 guru)', time: '2 jam lalu', color: '#ea580c' },
-    { icon: 'ti-school', text: 'Rina Putri mendaftar sebagai siswa baru', time: '3 jam lalu', color: '#0891b2' },
-  ];
-
-  // Monthly data for CSS bar chart
-  const monthlyData = [
-    { month: 'Jan', guru: 5, siswa: 28, pendapatan: 12 },
-    { month: 'Feb', guru: 8, siswa: 35, pendapatan: 18 },
-    { month: 'Mar', guru: 6, siswa: 42, pendapatan: 22 },
-    { month: 'Apr', guru: 10, siswa: 55, pendapatan: 35 },
-    { month: 'Mei', guru: 12, siswa: 68, pendapatan: 45 },
-    { month: 'Jun', guru: 7, siswa: 84, pendapatan: 52 },
-  ];
-  const maxSiswa = Math.max(...monthlyData.map(d => d.siswa));
+  const monthlyData = data.siswaPerBulan;
+  const maxSiswa = monthlyData.length ? Math.max(...monthlyData.map(d => d.siswa)) : 1;
 
   const quickActions = [
     { icon: 'ti-user-check', label: 'Verifikasi Guru', color: '#d97706', bg: '#FFFBEB' },
@@ -107,7 +124,7 @@ export default function AdminOverview() {
         ))}
       </div>
 
-      {/* Extra Cards */}
+      {/* Extra Cards (Pendapatan Bersih + Menunggu Verifikasi) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 22 }}>
         {extraCards.map((card) => (
           <div key={card.label} style={{
@@ -141,8 +158,8 @@ export default function AdminOverview() {
             Tren Pendaftaran Siswa
           </h3>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 140, padding: '0 4px' }}>
-            {monthlyData.map((d) => (
-              <div key={d.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            {monthlyData.map((d, idx) => (
+              <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#185FA5' }}>{d.siswa}</div>
                 <div style={{
                   width: '100%', maxWidth: 36, borderRadius: '6px 6px 2px 2px',
@@ -192,12 +209,12 @@ export default function AdminOverview() {
           Aktivitas Terbaru
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {recentActivities.map((act, i) => (
+          {data.recentActivities.map((act, i) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'center', gap: 14,
               padding: '12px 16px', borderRadius: 10,
               background: 'rgba(255,255,255,0.03)',
-              borderBottom: i < recentActivities.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+              borderBottom: i < data.recentActivities.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
               transition: 'background 0.15s',
             }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}

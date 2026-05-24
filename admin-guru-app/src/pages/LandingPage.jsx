@@ -241,11 +241,6 @@ export default function LandingPage() {
                         <a href="#testimoni" className="nav-link">Testimoni</a>
                     </div>
                     <div style={{ display: "flex", gap: 12, alignItems: "center", marginLeft: "auto" }}>
-                        {localStorage.getItem('registration_pending') === 'true' && (
-                            <button className="btn-secondary" style={{ borderColor: '#F5C400', color: '#B28E00', background: 'rgba(245,196,0,0.1)' }} onClick={() => { setAuthTab('status'); setAuthOpen(true) }}>
-                                <i className="ti ti-clock" style={{ marginRight: 6 }}></i> Status Pendaftaran
-                            </button>
-                        )}
                         <button className="btn-secondary" onClick={() => { setAuthTab('login'); setAuthOpen(true) }}>Masuk</button>
                         <button className="btn-primary" onClick={() => { setAuthTab('register'); setAuthOpen(true) }}>Daftar Guru</button>
                     </div>

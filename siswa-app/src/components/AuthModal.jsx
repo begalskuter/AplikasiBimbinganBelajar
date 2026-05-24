@@ -30,6 +30,10 @@ const dataWilayah = {
   "DKI Jakarta": ["Jakarta Pusat", "Jakarta Utara", "Jakarta Barat", "Jakarta Selatan", "Jakarta Timur"],
 };
 
+// Strip "Kota " / "Kabupaten " di depan nama kota sebelum disimpan ke DB
+const normalizeKota = (kota) =>
+  kota ? kota.replace(/^(Kota|Kabupaten)\s+/i, '').trim() : '';
+
 function InputField({ label, type = "text", placeholder, value, onChange, focused, onFocus, onBlur }) {
   return (
     <div>
@@ -220,7 +224,7 @@ function RegisterForm({ onClose }) {
         alamat_lengkap: form.alamatLengkap,
         kelurahan: form.kelurahan,
         kecamatan: form.kecamatan,
-        kota: form.kota,
+        kota: normalizeKota(form.kota),   // ← strip "Kota "/"Kabupaten " di sini
         provinsi: form.provinsi,
       });
       localStorage.setItem('token', res.data.token);
@@ -320,7 +324,6 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
         onClick={(e) => e.stopPropagation()}
         style={{ background: "#fff", borderRadius: "20px", width: "100%", maxWidth: "480px", position: "relative", maxHeight: "90vh", display: "flex", flexDirection: "column", fontFamily: "'Segoe UI', system-ui, sans-serif" }}
       >
-        {/* HEADER */}
         <div style={{ padding: "36px 40px 0", flexShrink: 0 }}>
           <button
             onClick={onClose}
@@ -343,7 +346,6 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
           </div>
         </div>
 
-        {/* FORM */}
         <div style={{ padding: "0 40px 36px", overflowY: "auto", flex: 1 }}>
           {activeTab === "login"
             ? <LoginForm onClose={onClose} />
