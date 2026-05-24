@@ -77,6 +77,7 @@ class GuruController extends Controller
     {
         $data = [
             'id'             => $g->id,
+            'user_id'        => $g->user_id,
             'nama'           => $g->user->name,
             'email'          => $g->user->email,
             'kota'           => $g->user->kota,

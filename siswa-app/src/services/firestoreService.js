@@ -65,7 +65,7 @@ export const createChatRoom = async (bookingId, siswa, guru, mapel) => {
       siswa_id: siswa.id,
       siswa_name: siswa.name || siswa.nama_panggilan || "Siswa",
       siswa_avatar: siswa.foto_url || "",
-      guru_id: guru.id || guru.user_id,
+      guru_id: guru.user_id || guru.id,
       guru_name: guru.nama || guru.name || "Guru",
       guru_avatar: guru.foto_profil || guru.foto_url || "",
       mata_pelajaran: mapel || "",
@@ -125,11 +125,16 @@ export const listenChats = (role, userId, callback) => {
     const fieldName = role === "guru" ? "guru_id" : "siswa_id";
     const q = query(
       collection(db, "chats"),
-      where(fieldName, "==", userId),
-      orderBy("last_message_time", "desc")
+      where(fieldName, "==", userId)
     );
     return onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort locally to avoid Firebase composite index requirement
+      data.sort((a, b) => {
+        const timeA = a.last_message_time?.toMillis?.() || 0;
+        const timeB = b.last_message_time?.toMillis?.() || 0;
+        return timeB - timeA;
+      });
       callback(data);
     }, (error) => { console.warn("Error listening chats", error); });
   } catch (error) { console.warn("Failed chats listener", error); return () => {}; }
