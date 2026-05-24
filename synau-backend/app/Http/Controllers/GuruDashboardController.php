@@ -99,7 +99,21 @@ class GuruDashboardController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $guru = Guru::where('user_id', $user->id)->firstOrFail();
+        $guru = Guru::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'bio'           => '',
+                'mata_pelajaran'=> [],
+                'jadwal'        => [],
+                'slot_jam'      => [],
+                'harga_mingguan'=> 0,
+                'harga_bulanan' => 0,
+                'menit_per_sesi'=> 90,
+                'rating'        => 0,
+                'total_siswa'   => 0,
+                'terverifikasi' => false,
+            ]
+        );
 
         $request->validate([
             'jadwal'            => 'nullable|array',
@@ -119,7 +133,21 @@ class GuruDashboardController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $guru = Guru::where('user_id', $user->id)->firstOrFail();
+        $guru = Guru::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'bio'           => '',
+                'mata_pelajaran'=> [],
+                'jadwal'        => [],
+                'slot_jam'      => [],
+                'harga_mingguan'=> 0,
+                'harga_bulanan' => 0,
+                'menit_per_sesi'=> 90,
+                'rating'        => 0,
+                'total_siswa'   => 0,
+                'terverifikasi' => false,
+            ]
+        );
 
         $request->validate([
             'status' => 'required|in:confirmed,cancelled',

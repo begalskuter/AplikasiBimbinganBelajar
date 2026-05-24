@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { listenActivityLogs } from '../../services/firestoreService';
 
 const formatRupiah = (value) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
@@ -13,6 +14,7 @@ export default function LaporanAdmin() {
     topGurus: [],
   });
   const [loading, setLoading] = useState(true);
+  const [activityLogs, setActivityLogs] = useState([]);
 
   useEffect(() => {
     const fetchLaporan = async () => {
@@ -26,6 +28,13 @@ export default function LaporanAdmin() {
       }
     };
     fetchLaporan();
+
+    // Firebase Listener untuk Log Aktivitas
+    const unsubscribe = listenActivityLogs((data) => {
+      setActivityLogs(data.slice(0, 5)); // Ambil 5 terbaru
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (loading) {
@@ -161,6 +170,35 @@ export default function LaporanAdmin() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Realtime Activity Logs (Firebase) */}
+      <div style={{ marginTop: 20, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 14, padding: 24, boxShadow: '0 4px 12px rgba(22,163,74,0.05)' }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#166534', margin: 0, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ position: 'relative', display: 'flex', height: 10, width: 10 }}>
+            <span style={{ animate: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite', position: 'absolute', inlineSize: '100%', blockSize: '100%', borderRadius: '50%', backgroundColor: '#22c55e', opacity: 0.7 }}></span>
+            <span style={{ position: 'relative', display: 'inline-flex', borderRadius: '50%', height: 10, width: 10, backgroundColor: '#16a34a' }}></span>
+          </span>
+          Aktivitas Terbaru Sistem (Live)
+        </h3>
+        
+        {activityLogs.length === 0 ? (
+          <div style={{ fontSize: 13, color: '#15803d', fontStyle: 'italic' }}>Belum ada aktivitas realtime yang terekam.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {activityLogs.map(log => {
+              const waktu = log.created_at ? new Date(log.created_at.toDate()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'Sekarang';
+              return (
+                <div key={log.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingBottom: 12, borderBottom: '1px dashed #bbf7d0' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 6px', borderRadius: 6, marginTop: 2 }}>{waktu}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>{log.actor_name} <span style={{ fontWeight: 400, color: '#15803d' }}>{log.description}</span></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

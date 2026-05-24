@@ -153,31 +153,40 @@ function SesiMendatang({ jadwal, loading }) {
     );
 }
 
-function GuruFavorit({ guru, index, onLihat }) {
-    if (!guru) return (
+function GuruFavoritList({ guruList, onLihat }) {
+    if (!guruList || guruList.length === 0) return (
         <div style={s.card}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 16 }}>🏆 Guru Favoritmu</div>
             <p style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "16px 0" }}>Belum ada guru favorit.<br /><span style={{ fontSize: 12 }}>Klik ❤️ di profil guru untuk menambahkan.</span></p>
         </div>
     );
-    const warna = getWarna(index ?? 0);
-    const inisial = getInisial(guru.nama);
     return (
         <div style={s.card}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 16 }}>🏆 Guru Favoritmu</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, background: "#E6F1FB", borderRadius: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: warna.bg, color: warna.text, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
-                    {inisial}
-                </div>
-                <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#042C53" }}>{guru.nama}</div>
-                    <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{guru.mapel} · ★ {guru.rating}</div>
-                </div>
-                <button onClick={() => onLihat(guru)} style={s.btn}>Lihat Profil</button>
+            <div className="fav-scroll" style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 260, overflowY: "auto", paddingRight: 4 }}>
+                {guruList.map((guru, index) => {
+                    const warna = getWarna(index);
+                    const inisial = getInisial(guru.nama);
+                    return (
+                        <div key={guru.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, background: "#E6F1FB", borderRadius: 12 }}>
+                            <div style={{ width: 44, height: 44, borderRadius: "50%", background: warna.bg, color: warna.text, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                                {inisial}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: "#042C53" }}>{guru.nama}</div>
+                                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{guru.mapel} · ★ {guru.rating}</div>
+                            </div>
+                            <button onClick={() => onLihat(guru)} style={s.btn}>Lihat Profil</button>
+                        </div>
+                    );
+                })}
             </div>
+            <style>{`.fav-scroll::-webkit-scrollbar { width: 4px; } .fav-scroll::-webkit-scrollbar-track { background: transparent; } .fav-scroll::-webkit-scrollbar-thumb { background: #B5D4F4; border-radius: 10px; }`}</style>
         </div>
     );
 }
+
+import ChatWidget from "../../components/ChatWidget";
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -211,9 +220,7 @@ export default function Dashboard() {
         })
         .slice(0, 4);
 
-    const guruFavorit = favoritIds.length > 0
-        ? guruList.find(g => String(g.id) === String(favoritIds[favoritIds.length - 1])) ?? null
-        : null;
+    const guruFavoritArray = guruList.filter(g => favoritIds.includes(String(g.id)) || favoritIds.includes(g.id));
 
     const handleLihatProfil = (guru) => navigate(`/guru/${guru.id}`, { state: { guru } });
 
@@ -266,10 +273,12 @@ export default function Dashboard() {
 
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                         <SesiMendatang jadwal={jadwal} loading={loadingJadwal} />
-                        <GuruFavorit guru={guruFavorit} index={favoritIds.length > 0 ? favoritIds[favoritIds.length - 1] % 4 : 0} onLihat={handleLihatProfil} />
+                        <GuruFavoritList guruList={guruFavoritArray} onLihat={handleLihatProfil} />
                     </div>
                 </div>
             </div>
+            {/* Chat Widget ditaruh di level root Dashboard agar selalu melayang */}
+            {siswa?.id && <ChatWidget role="siswa" userId={siswa.id} />}
         </div>
     );
 }

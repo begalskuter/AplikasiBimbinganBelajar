@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { createActivityLog } from "../services/firestoreService";
 
 const inputStyle = {
   width: "100%",
@@ -341,10 +342,20 @@ function RegisterForm({ onRegisterSuccess }) {
     if (files.ijazah) formData.append("ijazah", files.ijazah);
 
     try {
-      await api.post("/auth/register-guru", formData, {
+      const res = await api.post("/auth/register-guru", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       localStorage.setItem("registration_pending", "true");
+      
+      // FIREBASE LOG: Pendaftaran Guru Baru
+      createActivityLog({
+        actor_id: res.data?.user?.id || 'new',
+        actor_role: 'guru',
+        actor_name: form.namaLengkap,
+        action: 'register',
+        description: 'Mendaftar sebagai guru baru dan menunggu verifikasi admin',
+      });
+
       onRegisterSuccess();
     } catch (err) {
       setError(

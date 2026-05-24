@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import api from '../../services/api';
 import useFavorit from '../../hooks/useFavorit';
+import { listenReviews, submitReview, createActivityLog } from '../../services/firestoreService';
 
 const warnaList = [
     { bg: "#185FA5", text: "#fff" },
@@ -124,6 +125,9 @@ export default function DetailGuru() {
 
     const [guru, setGuru] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [firebaseReviews, setFirebaseReviews] = useState([]);
+    const [newReview, setNewReview] = useState("");
+    const [newRating, setNewRating] = useState(5);
 
     const siswa = JSON.parse(localStorage.getItem('user')) ?? {};
     const inisialSiswa = siswa?.nama_panggilan?.[0]?.toUpperCase() ?? siswa?.name?.[0]?.toUpperCase() ?? "S";
@@ -133,6 +137,11 @@ export default function DetailGuru() {
     const isFavorit = favoritIds.map(String).includes(String(id));
 
     const handleToggleFavorit = () => toggle(parseInt(id));
+
+    useEffect(() => {
+        const unsubscribe = listenReviews(id, (data) => setFirebaseReviews(data));
+        return () => unsubscribe();
+    }, [id]);
 
     useEffect(() => {
         api.get(`/guru/${id}`)
@@ -196,6 +205,23 @@ export default function DetailGuru() {
         );
     }
 
+    const handleReviewSubmit = async () => {
+        if (!newReview.trim()) return;
+        await submitReview(id, siswa.id, siswa.name || siswa.nama_panggilan, newRating, newReview);
+        
+        // Activity Log untuk ulasan
+        createActivityLog({
+            actor_id: siswa.id,
+            actor_role: 'siswa',
+            actor_name: siswa.name || siswa.nama_panggilan,
+            action: 'review',
+            description: `Memberikan ulasan bintang ${newRating} kepada guru.`,
+        });
+
+        setNewReview("");
+        setNewRating(5);
+    };
+
     return (
         <div style={s.page}>
             <nav style={s.navbar}>
@@ -253,15 +279,50 @@ export default function DetailGuru() {
                     {/* Ulasan */}
                     <div style={s.card}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                            <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53" }}>Ulasan Siswa</div>
-                            <span style={s.badge("#E6F1FB", "#0C447C")}>★ {guru.rating} · {guru.totalUlasan} ulasan</span>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53" }}>Ulasan Siswa <span style={{fontSize: 11, background: '#E6F1FB', color: '#185FA5', padding: '2px 8px', borderRadius: 8, marginLeft: 8}}>Realtime</span></div>
+                            <span style={s.badge("#E6F1FB", "#0C447C")}>★ {guru.rating} · {guru.totalUlasan + firebaseReviews.length} ulasan</span>
                         </div>
-                        {guru.ulasan.length === 0 ? (
-                            <p style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "16px 0" }}>Belum ada ulasan.</p>
-                        ) : guru.ulasan.map((u, i) => (
+
+                        {/* Input Ulasan Baru */}
+                        <div style={{ background: "#f5f8ff", padding: 16, borderRadius: 12, marginBottom: 20 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#042C53", marginBottom: 8 }}>Beri ulasan untuk {guru.nama}</div>
+                            <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+                                {[1,2,3,4,5].map(star => (
+                                    <span key={star} onClick={() => setNewRating(star)} style={{ cursor: 'pointer', fontSize: 20, color: star <= newRating ? "#F5C400" : "#ddd" }}>
+                                        ★
+                                    </span>
+                                ))}
+                            </div>
+                            <textarea
+                                value={newReview}
+                                onChange={(e) => setNewReview(e.target.value)}
+                                placeholder="Ceritakan pengalaman belajarmu..."
+                                rows={3}
+                                style={{ width: "100%", padding: 12, border: "1px solid #B5D4F4", borderRadius: 8, fontSize: 13, fontFamily: "inherit", resize: "none", boxSizing: "border-box", marginBottom: 12 }}
+                            />
+                            <button onClick={handleReviewSubmit} style={{ background: "#185FA5", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                                Kirim Ulasan
+                            </button>
+                        </div>
+
+                        {firebaseReviews.map((u, i) => (
+                            <div key={u.id} style={{ padding: "16px 0", borderBottom: "1px solid #E6F1FB" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                                    <div style={s.avatarBox(getWarna(i).bg, getWarna(i).text, 34)}>{getInisial(u.siswa_name)}</div>
+                                    <div>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53" }}>{u.siswa_name}</div>
+                                        <div style={{ fontSize: 11, color: "#1D9E75", marginTop: 2, fontWeight: 600 }}>Baru Saja</div>
+                                    </div>
+                                    <div style={{ marginLeft: "auto" }}><Bintang jumlah={u.rating} /></div>
+                                </div>
+                                <p style={{ fontSize: 13, color: "#555", lineHeight: 1.65 }}>{u.komentar}</p>
+                            </div>
+                        ))}
+
+                        {guru.ulasan.map((u, i) => (
                             <div key={u.id} style={{ padding: "16px 0", borderBottom: i < guru.ulasan.length - 1 ? "1px solid #E6F1FB" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                                    <div style={s.avatarBox(getWarna(i).bg, getWarna(i).text, 34)}>
+                                    <div style={s.avatarBox(getWarna(i+10).bg, getWarna(i+10).text, 34)}>
                                         {getInisial(u.nama)}
                                     </div>
                                     <div>

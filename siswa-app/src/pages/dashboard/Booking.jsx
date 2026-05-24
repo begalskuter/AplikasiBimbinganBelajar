@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import api from '../../services/api';
+import { createActivityLog, createChatRoom } from '../../services/firestoreService';
 
 const HARI_URUT = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 const HARI_KE_JS = { "Minggu": 0, "Senin": 1, "Selasa": 2, "Rabu": 3, "Kamis": 4, "Jumat": 5, "Sabtu": 6 };
@@ -464,7 +465,7 @@ export default function Booking() {
         setLoading(true);
         setError("");
         try {
-            await api.post('/booking', {
+            const res = await api.post('/booking', {
                 guru_id: guru.id,
                 paket: paket,
                 mata_pelajaran: mapelDipilih,
@@ -473,6 +474,20 @@ export default function Booking() {
                 tanggal_mulai: tanggalMulai,
                 catatan: catatan || null,
             });
+            
+            // FIREBASE LOG: Booking Berhasil
+            const bookingId = res.data?.booking?.id || Date.now();
+            
+            createActivityLog({
+                actor_id: siswa.id,
+                actor_role: 'siswa',
+                actor_name: siswa.name || siswa.nama_panggilan,
+                action: 'booking',
+                description: `Memesan sesi bimbingan dengan ${guru.nama}`,
+            });
+
+            createChatRoom(bookingId, siswa, guru, mapelDipilih);
+            
             setBerhasil(true);
         } catch (err) {
             setError(err.response?.data?.message || "Booking gagal, coba lagi.");
