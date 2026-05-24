@@ -65,6 +65,14 @@ class GuruController extends Controller
         return response()->json(['booked_slots' => $booked]);
     }
 
+    private function decodeJson($value, $default = [])
+    {
+        if (is_array($value)) return $value;
+        $decoded = json_decode($value, true);
+        if (is_string($decoded)) $decoded = json_decode($decoded, true);
+        return $decoded ?? $default;
+    }
+
     private function format(Guru $g, bool $detail = false): array
     {
         $data = [
@@ -73,8 +81,8 @@ class GuruController extends Controller
             'email'          => $g->user->email,
             'kota'           => $g->user->kota,
             'mapel'          => $g->mata_pelajaran[0] ?? '',
-            'mata_pelajaran' => $g->mata_pelajaran,
-            'jadwal'         => $g->jadwal,
+            'mata_pelajaran' => $this->decodeJson($g->getRawOriginal('mata_pelajaran')),
+            'jadwal'         => $this->decodeJson($g->getRawOriginal('jadwal')),
             'rating'         => $g->rating,
             'terverifikasi'  => $g->terverifikasi,
             'harga'          => [
@@ -86,10 +94,10 @@ class GuruController extends Controller
         ];
 
         if ($detail) {
-            $data['bio']         = $g->bio;
-            $data['total_siswa'] = $g->total_siswa;
-            $data['kepuasan']    = 95;
-            $data['slot_jam']    = $g->slot_jam;
+            $data['bio']               = $g->bio;
+            $data['total_siswa']       = $g->total_siswa;
+            $data['kepuasan']          = 95;
+            $data['slot_jam_per_hari'] = $this->decodeJson($g->getRawOriginal('slot_jam'));
         }
 
         return $data;

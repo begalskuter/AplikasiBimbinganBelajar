@@ -12,11 +12,6 @@ export default function SiswaBooking() {
       setBookings(res.data || []);
     } catch (err) {
       console.error(err);
-      // Dummy data fallback with no_hp
-      setBookings([
-        { id: 1, siswa: { name: 'Budi Santoso', no_hp: '081234567890' }, matpel: 'Matematika SMP', paket: 'Mingguan', hari_dipilih: ['Senin', 'Rabu'], waktu_mulai: { 'Senin': '08:00', 'Rabu': '10:00' }, tanggal_mulai: '2026-06-01', status: 'pending', total_harga: 150000 },
-        { id: 2, siswa: { name: 'Siti Aminah', no_hp: '085678901234' }, matpel: 'Matematika SMA', paket: 'Bulanan', hari_dipilih: ['Jumat', 'Sabtu'], waktu_mulai: { 'Jumat': '14:00', 'Sabtu': '16:00' }, tanggal_mulai: '2026-06-05', status: 'confirmed', total_harga: 500000 },
-      ]);
     } finally {
       setLoading(false);
     }
@@ -69,7 +64,7 @@ export default function SiswaBooking() {
             Kelola permintaan sesi belajar dari siswa
           </p>
         </div>
-        
+
         {/* Filters */}
         <div style={{ display: 'flex', gap: 8, background: '#f5f5f5', padding: 4, borderRadius: 12 }}>
           {['all', 'pending', 'confirmed', 'cancelled'].map(f => (
@@ -125,7 +120,7 @@ export default function SiswaBooking() {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 13, fontWeight: 700, color: '#185FA5'
                       }}>
-                        {(b.siswa?.name || '?').substring(0,2).toUpperCase()}
+                        {(b.siswa?.name || '?').substring(0, 2).toUpperCase()}
                       </div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a' }}>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../services/api';
 
 const mapelOptions = [
   'Matematika SMP', 'Matematika SMA', 'Fisika SMP', 'Fisika SMA',
@@ -13,9 +14,10 @@ export default function OnboardingGuru() {
   const [step, setStep] = useState(1);
   const [mapel, setMapel] = useState([]);
   const [jadwal, setJadwal] = useState([]);
-  const [slotJamPerHari, setSlotJamPerHari] = useState({}); // { Senin: ['08:00'], ... }
+  const [slotJamPerHari, setSlotJamPerHari] = useState({});
   const [selectedDay, setSelectedDay] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const toggleMapel = (m) => {
@@ -52,7 +54,24 @@ export default function OnboardingGuru() {
 
   const handleFinish = async () => {
     setLoading(true);
-    setTimeout(() => { navigate('/dashboardguru'); }, 1200);
+    setError('');
+    try {
+      await api.post('/guru/onboarding', {
+        mata_pelajaran: mapel,
+        jadwal: jadwal,
+        slot_jam: slotJamPerHari,
+      });
+
+      // Update flag di localStorage supaya guard tahu sudah selesai
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      user.onboarding_completed = true;
+      localStorage.setItem('user', JSON.stringify(user));
+
+      navigate('/dashboardguru', { replace: true });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal menyimpan. Silakan coba lagi.');
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,6 +105,12 @@ export default function OnboardingGuru() {
           <div style={{ flex: 1, height: 3, borderRadius: 2, background: step >= 2 ? '#185FA5' : '#e2e8f0', transition: 'all 0.3s' }} />
         </div>
 
+        {error && (
+          <div style={{ background: '#FFF1F2', border: '1px solid #fecdd3', borderRadius: 10, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#be123c' }}>
+            ⚠️ {error}
+          </div>
+        )}
+
         {step === 1 && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -108,6 +133,7 @@ export default function OnboardingGuru() {
                     background: active ? '#EFF6FF' : '#fafafa',
                     color: active ? '#0C447C' : '#64748b', fontSize: 13,
                     fontWeight: active ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s',
+                    fontFamily: 'inherit',
                   }}>
                     {active && <i className="ti ti-check" style={{ fontSize: 13, marginRight: 6 }} />}{m}
                   </button>
@@ -120,6 +146,7 @@ export default function OnboardingGuru() {
                 padding: '12px 32px', background: mapel.length > 0 ? '#185FA5' : '#d1d5db',
                 color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700,
                 cursor: mapel.length > 0 ? 'pointer' : 'default', transition: 'all 0.2s',
+                fontFamily: 'inherit',
               }}>
                 Selanjutnya
               </button>
@@ -163,7 +190,7 @@ export default function OnboardingGuru() {
                           padding: 0, fontFamily: 'inherit', flex: 1, textAlign: 'left',
                         }}>
                           {h}
-                          {active && slotCount > 0 && <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 6 }}>{slotCount}</span>}
+                          {active && slotCount > 0 && <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 6 }}>{slotCount} slot</span>}
                         </button>
                         <button onClick={() => toggleHari(h)} style={{
                           width: 20, height: 20, borderRadius: '50%',
@@ -196,6 +223,7 @@ export default function OnboardingGuru() {
                           background: active ? '#185FA5' : '#fafafa',
                           color: active ? '#fff' : '#64748b', fontSize: 13,
                           fontWeight: active ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s',
+                          fontFamily: 'inherit',
                         }}>{slot}</button>
                       );
                     })}
@@ -212,7 +240,8 @@ export default function OnboardingGuru() {
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <button onClick={() => setStep(1)} style={{
                 padding: '12px 24px', background: 'transparent', color: '#64748b',
-                border: '1.5px solid #d1d5db', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                border: '1.5px solid #d1d5db', borderRadius: 10, fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit',
               }}>
                 Kembali
               </button>
@@ -222,6 +251,7 @@ export default function OnboardingGuru() {
                 color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700,
                 cursor: (hasAnySlots && !loading) ? 'pointer' : 'default',
                 transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8,
+                fontFamily: 'inherit',
               }}>
                 {loading && <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />}
                 {loading ? 'Menyimpan...' : 'Selesai & Buka Dashboard'}

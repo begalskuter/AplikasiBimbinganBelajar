@@ -43,6 +43,7 @@ const mockFallbackGuru = {
     mataPelajaran: ["Matematika", "Fisika"],
     kota: "Yogyakarta", rating: 4.9, warnaBg: "#185FA5", warnaText: "#fff",
     jadwal: ["Senin", "Rabu", "Jumat", "Sabtu"],
+    slot_jam_per_hari: {},
     harga: { mingguan: 150000, bulanan: 500000, sesiPerMinggu: 2, menitPerSesi: 90 },
 };
 
@@ -88,7 +89,6 @@ function Step1({ guru, paket, setPaket, mapelDipilih, setMapelDipilih, jadwalDip
     const harga = paket === "mingguan" ? guru.harga.mingguan : guru.harga.bulanan;
     const maxHari = paket === "mingguan" ? 2 : 3;
 
-    // Daftar mata pelajaran — fallback ke mapel tunggal kalau mataPelajaran kosong
     const daftarMapel = guru.mataPelajaran?.length > 0
         ? guru.mataPelajaran
         : [guru.mapel].filter(Boolean);
@@ -120,7 +120,6 @@ function Step1({ guru, paket, setPaket, mapelDipilih, setMapelDipilih, jadwalDip
                 </div>
             </div>
 
-            {/* Pilih Mata Pelajaran */}
             <div style={s.card}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 6 }}>Pilih Mata Pelajaran</div>
                 <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Pilih 1 mata pelajaran yang ingin dipelajari</div>
@@ -128,18 +127,7 @@ function Step1({ guru, paket, setPaket, mapelDipilih, setMapelDipilih, jadwalDip
                     {daftarMapel.map((mp) => {
                         const dipilih = mapelDipilih === mp;
                         return (
-                            <div
-                                key={mp}
-                                onClick={() => setMapelDipilih(mp)}
-                                style={{
-                                    padding: "10px 20px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                                    cursor: "pointer", transition: "all 0.15s",
-                                    border: dipilih ? "2px solid #185FA5" : "1.5px solid #B5D4F4",
-                                    background: dipilih ? "#185FA5" : "#fff",
-                                    color: dipilih ? "#fff" : "#185FA5",
-                                    boxShadow: dipilih ? "0 2px 8px rgba(24,95,165,0.2)" : "none",
-                                }}
-                            >
+                            <div key={mp} onClick={() => setMapelDipilih(mp)} style={{ padding: "10px 20px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s", border: dipilih ? "2px solid #185FA5" : "1.5px solid #B5D4F4", background: dipilih ? "#185FA5" : "#fff", color: dipilih ? "#fff" : "#185FA5", boxShadow: dipilih ? "0 2px 8px rgba(24,95,165,0.2)" : "none" }}>
                                 {mp}
                             </div>
                         );
@@ -148,7 +136,6 @@ function Step1({ guru, paket, setPaket, mapelDipilih, setMapelDipilih, jadwalDip
                 {!mapelDipilih && <div style={{ fontSize: 12, color: "#E24B4A", marginTop: 10 }}>* Pilih mata pelajaran terlebih dahulu</div>}
             </div>
 
-            {/* Pilih Paket */}
             <div style={s.card}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 16 }}>Pilih Paket Belajar</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -170,7 +157,6 @@ function Step1({ guru, paket, setPaket, mapelDipilih, setMapelDipilih, jadwalDip
                 </div>
             </div>
 
-            {/* Pilih Hari */}
             <div style={s.card}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 6 }}>Pilih Hari Belajar</div>
                 <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>
@@ -205,9 +191,8 @@ function Step1({ guru, paket, setPaket, mapelDipilih, setMapelDipilih, jadwalDip
     );
 }
 
-const SLOT_JAM = ["08:00", "10:15", "12:30", "14:45", "17:00"];
-
-function SlotJam({ hari, guruId, slotDipilih, onPilih }) {
+// ← SLOT JAM sekarang dari data guru, bukan hardcoded
+function SlotJam({ hari, guruId, slotTersedia, slotDipilih, onPilih }) {
     const [bookedSlots, setBookedSlots] = useState([]);
 
     useEffect(() => {
@@ -226,7 +211,9 @@ function SlotJam({ hari, guruId, slotDipilih, onPilih }) {
         <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#185FA5", marginBottom: 10 }}>{hari}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {SLOT_JAM.map((slot) => {
+                {slotTersedia.length === 0 ? (
+                    <div style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic" }}>Tidak ada slot tersedia untuk hari ini</div>
+                ) : slotTersedia.map((slot) => {
                     const booked = bookedSlots.includes(slot);
                     const dipilih = slotDipilih === slot;
                     return (
@@ -289,7 +276,14 @@ function Step2({ guru, jadwalDipilih, waktuMulai, setWaktuMulai, tanggalMulai, s
                     <label style={s.label}>Pilih Slot Jam per Hari</label>
                     <div style={{ fontSize: 12, color: "#aaa", marginBottom: 14 }}>Slot abu-abu sudah dibooking siswa lain</div>
                     {jadwalDipilih.map((hari) => (
-                        <SlotJam key={hari} hari={hari} guruId={guru.id} slotDipilih={waktuMulai[hari] ?? null} onPilih={(slot) => setWaktuMulai({ ...waktuMulai, [hari]: slot })} />
+                        <SlotJam
+                            key={hari}
+                            hari={hari}
+                            guruId={guru.id}
+                            slotTersedia={guru.slot_jam_per_hari?.[hari] ?? []}
+                            slotDipilih={waktuMulai[hari] ?? null}
+                            onPilih={(slot) => setWaktuMulai({ ...waktuMulai, [hari]: slot })}
+                        />
                     ))}
                 </div>
 
@@ -307,14 +301,11 @@ function Step2({ guru, jadwalDipilih, waktuMulai, setWaktuMulai, tanggalMulai, s
     );
 }
 
-// QRIS dummy — pola kotak-kotak sederhana sebagai SVG gimmick
 function QrisGimmick({ nominal }) {
-    // Buat pattern QRIS sederhana dari string nominal sebagai seed
     const seed = nominal.toString();
     const cells = [];
     const SIZE = 21;
 
-    // Corner squares (finder patterns) — 3 sudut khas QRIS
     const isFinderPattern = (r, c) => {
         const corners = [[0, 0], [0, SIZE - 7], [SIZE - 7, 0]];
         return corners.some(([br, bc]) => r >= br && r < br + 7 && c >= bc && c < bc + 7 &&
@@ -322,13 +313,11 @@ function QrisGimmick({ nominal }) {
                 (r >= br + 2 && r <= br + 4 && c >= bc + 2 && c <= bc + 4)));
     };
 
-    // Data modules — deterministik dari nominal
     for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
             if (isFinderPattern(r, c)) {
                 cells.push({ r, c, dark: true });
             } else {
-                // pseudo-random tapi deterministik
                 const idx = (r * SIZE + c + parseInt(seed.slice(-4) || "1234")) % 7;
                 cells.push({ r, c, dark: idx < 3 });
             }
@@ -340,41 +329,30 @@ function QrisGimmick({ nominal }) {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            {/* Header QRIS */}
             <div style={{ background: "#fff", border: "2px solid #E6F1FB", borderRadius: 16, padding: 20, display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                {/* Logo QRIS */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
                     <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 2, color: "#E24B4A" }}>QRIS</div>
                     <div style={{ flex: 1, height: 1, background: "#E6F1FB" }} />
                     <div style={{ fontSize: 10, color: "#aaa", fontWeight: 600 }}>Synau</div>
                 </div>
-
-                {/* QR Code SVG */}
                 <svg width={totalSize} height={totalSize} viewBox={`0 0 ${totalSize} ${totalSize}`} xmlns="http://www.w3.org/2000/svg">
                     <rect width={totalSize} height={totalSize} fill="white" />
                     {cells.map(({ r, c, dark }) => dark && (
                         <rect key={`${r}-${c}`} x={16 + c * cellSize} y={16 + r * cellSize} width={cellSize - 1} height={cellSize - 1} rx={0.5} fill="#1a1a1a" />
                     ))}
                 </svg>
-
-                {/* Nominal */}
                 <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>Total Pembayaran</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: "#042C53" }}>{formatRupiah(nominal)}</div>
                 </div>
-
-                {/* Info bank */}
                 <div style={{ background: "#f5f8ff", borderRadius: 10, padding: "8px 16px", width: "100%", boxSizing: "border-box" }}>
                     <div style={{ fontSize: 11, color: "#888", textAlign: "center" }}>Scan dengan aplikasi m-banking atau e-wallet apapun</div>
                 </div>
             </div>
-
-            {/* Countdown timer gimmick */}
             <div style={{ marginTop: 12, fontSize: 12, color: "#888", display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#1D9E75", animation: "pulse 1.5s infinite" }} />
                 QR aktif · berlaku 15 menit
             </div>
-
             <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
         </div>
     );
@@ -391,7 +369,6 @@ function Step3({ guru, paket, mapelDipilih, jadwalDipilih, waktuMulai, tanggalMu
 
     return (
         <div>
-            {/* Ringkasan */}
             <div style={s.card}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 16 }}>Ringkasan Booking</div>
                 {[
@@ -424,28 +401,20 @@ function Step3({ guru, paket, mapelDipilih, jadwalDipilih, waktuMulai, tanggalMu
                 </div>
             </div>
 
-            {/* QRIS */}
             <div style={{ ...s.card, textAlign: "center" }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53", marginBottom: 4 }}>Pembayaran via QRIS</div>
                 <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>Scan QR di bawah menggunakan aplikasi m-banking atau e-wallet kamu</div>
-
                 <QrisGimmick nominal={harga} />
-
                 <div style={{ marginTop: 24, padding: "14px", background: "#FEF3E2", borderRadius: 12, fontSize: 13, color: "#633806", fontWeight: 600 }}>
                     ⚠️ Pastikan nominal yang dibayar sesuai: <strong>{formatRupiah(harga)}</strong>
                 </div>
             </div>
 
-            {/* Tombol */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12 }}>
                 <button onClick={onBack} disabled={loading} style={{ padding: 14, background: "none", border: "1px solid #B5D4F4", borderRadius: 12, fontSize: 14, fontWeight: 600, color: "#185FA5", cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
                     Kembali
                 </button>
-                <button
-                    onClick={handleSudahBayar}
-                    disabled={loading || sudahBayar}
-                    style={{ padding: 14, background: loading || sudahBayar ? "#B5D4F4" : "#1D9E75", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: loading || sudahBayar ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "background 0.2s" }}
-                >
+                <button onClick={handleSudahBayar} disabled={loading || sudahBayar} style={{ padding: 14, background: loading || sudahBayar ? "#B5D4F4" : "#1D9E75", color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: loading || sudahBayar ? "not-allowed" : "pointer", fontFamily: "inherit", transition: "background 0.2s" }}>
                     {loading ? "Memproses..." : sudahBayar ? "Memverifikasi..." : "✓ Sudah Bayar"}
                 </button>
             </div>

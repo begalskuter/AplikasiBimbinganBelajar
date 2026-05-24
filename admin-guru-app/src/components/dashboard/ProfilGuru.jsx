@@ -23,15 +23,19 @@ export default function ProfilGuru({ guruData, onUpdate }) {
   const [menitPerSesi, setMenitPerSesi] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState('');
   const [newMapel, setNewMapel] = useState('');
   const [focusedField, setFocusedField] = useState(null);
   const [fotoProfil, setFotoProfil] = useState(null);
   const [fotoPreview, setFotoPreview] = useState(null);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
 
   useEffect(() => {
     if (guruData) {
       setBio(guruData.bio || '');
-      setMapel(guruData.mata_pelajaran || []);
+      // Pastikan mata_pelajaran adalah array
+      const mataPelajaran = Array.isArray(guruData.mata_pelajaran) ? guruData.mata_pelajaran : [];
+      setMapel(mataPelajaran);
       setHargaMingguan(guruData.harga?.mingguan?.toString() || '');
       setHargaBulanan(guruData.harga?.bulanan?.toString() || '');
       setMenitPerSesi(guruData.harga?.menitPerSesi?.toString() || '90');
@@ -39,30 +43,60 @@ export default function ProfilGuru({ guruData, onUpdate }) {
     }
   }, [guruData]);
 
-  const handleFotoChange = (e) => {
+  const handleFotoChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setFotoProfil(file);
-      setFotoPreview(URL.createObjectURL(file));
+    if (!file) return;
+    setFotoProfil(file);
+    setFotoPreview(URL.createObjectURL(file));
+
+    setUploadingFoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('foto', file);
+      await api.post('/guru/profil/foto', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (onUpdate) onUpdate();
+    } catch (err) {
+      console.error('Gagal upload foto:', err);
+    } finally {
+      setUploadingFoto(false);
     }
   };
 
-  const addMapel = (value) => { if (value && !mapel.includes(value)) setMapel([...mapel, value]); setNewMapel(''); };
+  const addMapel = (value) => {
+    if (value && !mapel.includes(value)) setMapel([...mapel, value]);
+    setNewMapel('');
+  };
   const removeMapel = (item) => setMapel(mapel.filter(m => m !== item));
 
   const handleSave = async () => {
-    setSaving(true); setSaveSuccess(false);
+    setSaving(true);
+    setSaveSuccess(false);
+    setError('');
     try {
-      await api.put('/guru/profil', { bio, mata_pelajaran: mapel, harga_mingguan: parseInt(hargaMingguan) || 0, harga_bulanan: parseInt(hargaBulanan) || 0, menit_per_sesi: parseInt(menitPerSesi) || 90 });
-      setSaveSuccess(true); if (onUpdate) onUpdate();
+      await api.put('/guru/profil', {
+        bio,
+        mata_pelajaran: mapel,
+        harga_mingguan: parseInt(hargaMingguan) || 0,
+        harga_bulanan: parseInt(hargaBulanan) || 0,
+        menit_per_sesi: parseInt(menitPerSesi) || 90,
+      });
+      setSaveSuccess(true);
+      if (onUpdate) onUpdate();
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) { console.error(err); }
-    setSaving(false);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Gagal menyimpan. Coba lagi.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getFocusStyle = (field) => ({ ...inputStyle, borderColor: focusedField === field ? '#3b82f6' : '#e2e8f0' });
-
   const initials = guruData?.nama ? guruData.nama.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() : 'GR';
+
+  // Pastikan mapel array sebelum render
+  const safeMapel = Array.isArray(mapel) ? mapel : [];
 
   return (
     <div>
@@ -89,50 +123,51 @@ export default function ProfilGuru({ guruData, onUpdate }) {
         </div>
       )}
 
+      {error && (
+        <div style={{ background: '#FFF1F2', border: '1px solid #fecdd3', borderRadius: 10, padding: '10px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <i className="ti ti-alert-circle" style={{ fontSize: 16, color: '#be123c' }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#be123c' }}>{error}</span>
+        </div>
+      )}
+
       {/* Profile Picture + Preview Card */}
-      <div style={{
-        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16,
-        padding: '24px 28px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 24,
-      }}>
-        {/* Profile Picture */}
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '24px 28px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 24 }}>
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <div style={{
             width: 88, height: 88, borderRadius: 20, overflow: 'hidden',
             background: fotoPreview ? 'transparent' : 'linear-gradient(135deg, #378ADD, #1D9E75)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '3px solid #e2e8f0',
+            opacity: uploadingFoto ? 0.6 : 1,
           }}>
-            {fotoPreview ? (
-              <img src={fotoPreview} alt="Foto Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <span style={{ fontSize: 28, fontWeight: 800, color: '#fff' }}>{initials}</span>
-            )}
+            {fotoPreview
+              ? <img src={fotoPreview} alt="Foto Profil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: 28, fontWeight: 800, color: '#fff' }}>{initials}</span>
+            }
           </div>
           <label style={{
             position: 'absolute', bottom: -4, right: -4,
             width: 30, height: 30, borderRadius: '50%',
-            background: '#185FA5', border: '2px solid #fff',
+            background: uploadingFoto ? '#94a3b8' : '#185FA5', border: '2px solid #fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', transition: 'background 0.2s',
+            cursor: uploadingFoto ? 'default' : 'pointer', transition: 'background 0.2s',
           }}>
-            <i className="ti ti-pencil" style={{ fontSize: 14, color: '#fff' }} />
-            <input type="file" accept="image/*" onChange={handleFotoChange} style={{ display: 'none' }} />
+            <i className={`ti ${uploadingFoto ? 'ti-loader' : 'ti-pencil'}`} style={{ fontSize: 14, color: '#fff' }} />
+            <input type="file" accept="image/*" onChange={handleFotoChange} style={{ display: 'none' }} disabled={uploadingFoto} />
           </label>
         </div>
 
-        {/* Info */}
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{guruData?.nama || 'Nama Guru'}</div>
           <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 8 }}>{guruData?.email || 'email@contoh.com'} · {guruData?.kota || 'Kota'}</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {mapel.slice(0, 4).map(m => (
+            {safeMapel.slice(0, 4).map(m => (
               <span key={m} style={{ background: '#EFF6FF', color: '#1d4ed8', padding: '3px 10px', borderRadius: 14, fontSize: 11, fontWeight: 600, border: '1px solid #dbeafe' }}>{m}</span>
             ))}
-            {mapel.length > 4 && <span style={{ background: '#f1f5f9', color: '#64748b', padding: '3px 10px', borderRadius: 14, fontSize: 11, fontWeight: 600 }}>+{mapel.length - 4}</span>}
+            {safeMapel.length > 4 && <span style={{ background: '#f1f5f9', color: '#64748b', padding: '3px 10px', borderRadius: 14, fontSize: 11, fontWeight: 600 }}>+{safeMapel.length - 4}</span>}
           </div>
         </div>
 
-        {/* Status + Price */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', marginBottom: 6 }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: guruData?.terverifikasi ? '#16a34a' : '#d97706' }} />
@@ -158,8 +193,10 @@ export default function ProfilGuru({ guruData, onUpdate }) {
           </h3>
           <div style={{ marginBottom: 14 }}>
             <label style={labelStyle}>Bio / Deskripsi</label>
-            <textarea value={bio} onChange={(e) => setBio(e.target.value)} onFocus={() => setFocusedField('bio')} onBlur={() => setFocusedField(null)}
-              placeholder="Ceritakan pengalaman mengajar Anda..." rows={4} style={{ ...getFocusStyle('bio'), resize: 'vertical' }} />
+            <textarea value={bio} onChange={(e) => setBio(e.target.value)}
+              onFocus={() => setFocusedField('bio')} onBlur={() => setFocusedField(null)}
+              placeholder="Ceritakan pengalaman mengajar Anda..." rows={4}
+              style={{ ...getFocusStyle('bio'), resize: 'vertical' }} />
           </div>
           <div style={{ marginBottom: 14 }}>
             <label style={labelStyle}>Nama Lengkap</label>
@@ -183,12 +220,8 @@ export default function ProfilGuru({ guruData, onUpdate }) {
               Mata Pelajaran
             </h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14, minHeight: 32 }}>
-              {mapel.length > 0 ? mapel.map((m) => (
-                <span key={m} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  background: '#EFF6FF', color: '#1d4ed8', padding: '5px 12px',
-                  borderRadius: 16, fontSize: 12, fontWeight: 600, border: '1px solid #dbeafe',
-                }}>
+              {safeMapel.length > 0 ? safeMapel.map((m) => (
+                <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#EFF6FF', color: '#1d4ed8', padding: '5px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600, border: '1px solid #dbeafe' }}>
                   {m}
                   <button onClick={() => removeMapel(m)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#6366f1', padding: 0, lineHeight: 1 }}>×</button>
                 </span>
@@ -197,7 +230,7 @@ export default function ProfilGuru({ guruData, onUpdate }) {
             <div style={{ display: 'flex', gap: 8 }}>
               <select value={newMapel} onChange={(e) => setNewMapel(e.target.value)} style={{ ...inputStyle, flex: 1, color: newMapel ? '#0f172a' : '#94a3b8', cursor: 'pointer' }}>
                 <option value="">Pilih mata pelajaran...</option>
-                {mapelOptions.filter(m => !mapel.includes(m)).map(m => <option key={m} value={m}>{m}</option>)}
+                {mapelOptions.filter(m => !safeMapel.includes(m)).map(m => <option key={m} value={m}>{m}</option>)}
               </select>
               <button onClick={() => addMapel(newMapel)} disabled={!newMapel} style={{
                 padding: '11px 18px', background: newMapel ? '#185FA5' : '#e2e8f0',
@@ -217,18 +250,21 @@ export default function ProfilGuru({ guruData, onUpdate }) {
               <div>
                 <label style={labelStyle}>Harga Mingguan (Rp)</label>
                 <input type="number" value={hargaMingguan} onChange={(e) => setHargaMingguan(e.target.value)}
-                  onFocus={() => setFocusedField('hw')} onBlur={() => setFocusedField(null)} placeholder="150000" style={getFocusStyle('hw')} />
+                  onFocus={() => setFocusedField('hw')} onBlur={() => setFocusedField(null)}
+                  placeholder="150000" style={getFocusStyle('hw')} />
               </div>
               <div>
                 <label style={labelStyle}>Harga Bulanan (Rp)</label>
                 <input type="number" value={hargaBulanan} onChange={(e) => setHargaBulanan(e.target.value)}
-                  onFocus={() => setFocusedField('hb')} onBlur={() => setFocusedField(null)} placeholder="500000" style={getFocusStyle('hb')} />
+                  onFocus={() => setFocusedField('hb')} onBlur={() => setFocusedField(null)}
+                  placeholder="500000" style={getFocusStyle('hb')} />
               </div>
             </div>
             <div>
               <label style={labelStyle}>Durasi per Sesi (menit)</label>
               <input type="number" value={menitPerSesi} onChange={(e) => setMenitPerSesi(e.target.value)}
-                onFocus={() => setFocusedField('mps')} onBlur={() => setFocusedField(null)} placeholder="90" style={getFocusStyle('mps')} />
+                onFocus={() => setFocusedField('mps')} onBlur={() => setFocusedField(null)}
+                placeholder="90" style={getFocusStyle('mps')} />
             </div>
           </div>
         </div>
