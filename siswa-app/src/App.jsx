@@ -5,6 +5,8 @@ import CariGuru from './pages/dashboard/CariGuru'
 import DetailGuru from './pages/dashboard/DetailGuru'
 import Booking from './pages/dashboard/Booking'
 import Profile from './pages/dashboard/Profile'
+import ChatRoom from './pages/dashboard/ChatRoom'
+import ChatListSiswa from './pages/dashboard/ChatListSiswa'
 
 export default function App() {
   return (
@@ -17,8 +19,13 @@ export default function App() {
         <Route path="/guru/:id" element={<DetailGuru />} />
         <Route path="/booking/:id" element={<Booking />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/chat" element={<ChatListSiswa />} />
+        <Route path="/chat/:chatId" element={<ChatRoom />} />
         {/* <Route path="/booking/:id" element={<Booking />} /> */}
       </Routes>
     </BrowserRouter>
   )
 }
+
+
+

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import api from '../../services/api';
+import { addActivityLog, createChatRoomAfterBooking } from '../../services/firestoreService';
 
 const HARI_URUT = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 const HARI_KE_JS = { "Minggu": 0, "Senin": 1, "Selasa": 2, "Rabu": 3, "Kamis": 4, "Jumat": 5, "Sabtu": 6 };
@@ -464,7 +465,7 @@ export default function Booking() {
         setLoading(true);
         setError("");
         try {
-            await api.post('/booking', {
+            const bookingResponse = await api.post('/booking', {
                 guru_id: guru.id,
                 paket: paket,
                 mata_pelajaran: mapelDipilih,
@@ -473,6 +474,19 @@ export default function Booking() {
                 tanggal_mulai: tanggalMulai,
                 catatan: catatan || null,
             });
+            addActivityLog({
+                type: "student_booking",
+                title: "Booking Kelas Baru",
+                description: `${siswa.name || siswa.nama_panggilan || "Siswa"} melakukan booking kelas dengan guru ${guru.nama}.`,
+                actorRole: "siswa",
+                actorName: siswa.name || siswa.nama_panggilan || "Siswa",
+                relatedId: guru.id,
+            }).then(() => {
+                console.log("Activity log booking berhasil masuk ke Firestore.");
+            }).catch((firebaseError) => {
+                console.error("Gagal membuat activity log booking:", firebaseError);
+            });
+
             setBerhasil(true);
         } catch (err) {
             setError(err.response?.data?.message || "Booking gagal, coba lagi.");
@@ -536,3 +550,4 @@ export default function Booking() {
         </div>
     );
 }
+

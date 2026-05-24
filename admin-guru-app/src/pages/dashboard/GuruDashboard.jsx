@@ -7,6 +7,7 @@ import ProfilGuru from '../../components/dashboard/ProfilGuru';
 import JadwalGuru from '../../components/dashboard/JadwalGuru';
 import SiswaBooking from '../../components/dashboard/SiswaBooking';
 import Pembayaran from '../../components/dashboard/Pembayaran';
+import ChatGuru from '../../components/dashboard/ChatGuru';
 
 export default function GuruDashboard() {
   const [activePage, setActivePage] = useState('overview');
@@ -94,6 +95,8 @@ export default function GuruDashboard() {
         return <SiswaBooking />;
       case 'pembayaran':
         return <Pembayaran />;
+      case 'chat':
+        return <ChatGuru guruData={guruData} />;
       default:
         return <Overview guruData={guruData} bookings={bookings} />;
     }

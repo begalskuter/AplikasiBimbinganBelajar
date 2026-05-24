@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { listenAdminNotifications, listenActivityLogs } from '../../services/firestoreService';
 
 export default function AdminOverview() {
   const [now, setNow] = useState(new Date());
@@ -14,10 +15,28 @@ export default function AdminOverview() {
     recentActivities: [],
   });
   const [loading, setLoading] = useState(true);
+  const [adminNotifications, setAdminNotifications] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = listenAdminNotifications((notifications) => {
+      setAdminNotifications(notifications);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = listenActivityLogs((logs) => {
+      setActivityLogs(logs);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -199,6 +218,41 @@ export default function AdminOverview() {
         </div>
       </div>
 
+      {/* Admin Notifications Realtime */}
+      <div style={{ background: "#ffffff", borderRadius: 16, padding: "22px 26px", marginBottom: 22, border: "1px solid #e5e7eb", boxShadow: "0 8px 22px rgba(15,23,42,0.06)" }}>
+        <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", margin: 0, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <i className="ti ti-bell" style={{ fontSize: 18, color: "#185FA5" }} />
+          Notifikasi Admin
+          <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "#185FA5", background: "#E6F1FB", padding: "5px 10px", borderRadius: 999 }}>
+            {adminNotifications.length} data
+          </span>
+        </h3>
+
+        {adminNotifications.length === 0 ? (
+          <div style={{ padding: "18px", borderRadius: 12, background: "#f8fafc", color: "#94a3b8", fontSize: 13, textAlign: "center", fontWeight: 600 }}>
+            Belum ada notifikasi admin.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {adminNotifications.map((notif) => (
+              <div key={notif.id} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 16px", borderRadius: 14, background: notif.isRead ? "#f8fafc" : "#EFF6FF", border: notif.isRead ? "1px solid #e5e7eb" : "1px solid #BFDBFE" }}>
+                <div style={{ width: 38, height: 38, borderRadius: 12, background: "#185FA5", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <i className="ti ti-user-plus" style={{ fontSize: 18 }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>{notif.title || "Notifikasi Admin"}</div>
+                  <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.6 }}>{notif.message || "-"}</div>
+                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 8, fontWeight: 600 }}>Guru: {notif.teacherName || "-"}</div>
+                </div>
+                {!notif.isRead && (
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "#1D4ED8", background: "#DBEAFE", padding: "5px 9px", borderRadius: 999, whiteSpace: "nowrap" }}>Baru</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Recent Activities */}
       <div style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
@@ -209,12 +263,12 @@ export default function AdminOverview() {
           Aktivitas Terbaru
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {data.recentActivities.map((act, i) => (
+          {(activityLogs.length ? activityLogs : data.recentActivities).map((act, i) => (
             <div key={i} style={{
               display: 'flex', alignItems: 'center', gap: 14,
               padding: '12px 16px', borderRadius: 10,
               background: 'rgba(255,255,255,0.03)',
-              borderBottom: i < data.recentActivities.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+              borderBottom: i < (activityLogs.length ? activityLogs : data.recentActivities).length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
               transition: 'background 0.15s',
             }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
@@ -222,15 +276,15 @@ export default function AdminOverview() {
             >
               <div style={{
                 width: 34, height: 34, borderRadius: 8,
-                background: `${act.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: `${act.color || "#4db8ff"}20`, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>
-                <i className={`ti ${act.icon}`} style={{ fontSize: 16, color: act.color }} />
+                <i className={`ti ${act.icon || (act.type === "student_booking" ? "ti-calendar-plus" : "ti-user-plus")}`} style={{ fontSize: 16, color: act.color || "#4db8ff" }} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>{act.text}</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>{act.description || act.title || act.text}</div>
               </div>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 500, whiteSpace: 'nowrap' }}>{act.time}</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontWeight: 500, whiteSpace: 'nowrap' }}>{act.createdAt?.toDate ? act.createdAt.toDate().toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : (act.time || "Baru saja")}</span>
             </div>
           ))}
         </div>
@@ -238,3 +292,12 @@ export default function AdminOverview() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+

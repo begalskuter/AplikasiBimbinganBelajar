@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import api from '../../services/api';
+import { addReview, listenReviewsByTeacher, createOrGetChatRoom } from '../../services/firestoreService';
 import useFavorit from '../../hooks/useFavorit';
 
 const warnaList = [
@@ -30,7 +31,7 @@ function Bintang({ jumlah }) {
     );
 }
 
-function BookingCard({ guru, isFavorit, onToggleFavorit }) {
+function BookingCard({ guru, isFavorit, onToggleFavorit, onChatGuru }) {
     const navigate = useNavigate();
     const [paket, setPaket] = useState("mingguan");
 
@@ -83,6 +84,11 @@ function BookingCard({ guru, isFavorit, onToggleFavorit }) {
                     Booking Sekarang
                 </button>
 
+                {/* Tombol Chat */}
+                <button onClick={onChatGuru} style={{ width: "100%", padding: 12, background: "#E6F1FB", color: "#185FA5", border: "1px solid #B5D4F4", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", marginBottom: 10 }}>
+                    Chat Guru
+                </button>
+
                 {/* Tombol Favorit */}
                 <button
                     onClick={onToggleFavorit}
@@ -123,9 +129,56 @@ export default function DetailGuru() {
     const location = useLocation();
 
     const [guru, setGuru] = useState(null);
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState("");
+    const [reviewLoading, setReviewLoading] = useState(false);
+    const [reviewError, setReviewError] = useState("");
+    const [reviewSuccess, setReviewSuccess] = useState("");
+    const [firebaseReviews, setFirebaseReviews] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const siswa = JSON.parse(localStorage.getItem('user')) ?? {};
+
+    const handleSubmitReview = async () => {
+        setReviewError("");
+        setReviewSuccess("");
+
+        if (!reviewComment.trim()) {
+            setReviewError("Komentar ulasan tidak boleh kosong.");
+            return;
+        }
+
+        setReviewLoading(true);
+
+        try {
+            await addReview({
+                teacherId: id,
+                studentId: siswa.id || siswa.email || "unknown_student",
+                studentName: siswa.name || siswa.nama_panggilan || "Siswa",
+                rating: Number(reviewRating),
+                comment: reviewComment.trim(),
+            });
+
+            setReviewComment("");
+            setReviewRating(5);
+            setReviewSuccess("Ulasan berhasil dikirim.");
+        } catch (firebaseError) {
+            console.error("Gagal mengirim ulasan:", firebaseError);
+            setReviewError("Gagal mengirim ulasan. Cek koneksi atau Firestore Rules.");
+        } finally {
+            setReviewLoading(false);
+        }
+    };
+    useEffect(() => {
+        if (!id) return;
+
+        const unsubscribe = listenReviewsByTeacher(id, (reviews) => {
+            setFirebaseReviews(reviews);
+        });
+
+        return () => unsubscribe();
+    }, [id]);
+
     const inisialSiswa = siswa?.nama_panggilan?.[0]?.toUpperCase() ?? siswa?.name?.[0]?.toUpperCase() ?? "S";
 
     // ✅ Hook dipanggil di level komponen
@@ -133,6 +186,22 @@ export default function DetailGuru() {
     const isFavorit = favoritIds.map(String).includes(String(id));
 
     const handleToggleFavorit = () => toggle(parseInt(id));
+
+    const handleChatGuru = async () => {
+        try {
+            const chatId = await createOrGetChatRoom({
+                studentId: siswa.id || siswa.email || "unknown_student",
+                studentName: siswa.name || siswa.nama_panggilan || "Siswa",
+                teacherId: guru.id || id,
+                teacherName: guru.nama || "Guru",
+            });
+
+            navigate(`/chat/${chatId}`);
+        } catch (firebaseError) {
+            console.error("Gagal membuka chat dengan guru:", firebaseError);
+            alert("Gagal membuka chat. Cek koneksi atau Firestore Rules.");
+        }
+    };
 
     useEffect(() => {
         api.get(`/guru/${id}`)
@@ -256,30 +325,73 @@ export default function DetailGuru() {
                             <div style={{ fontSize: 15, fontWeight: 700, color: "#042C53" }}>Ulasan Siswa</div>
                             <span style={s.badge("#E6F1FB", "#0C447C")}>★ {guru.rating} · {guru.totalUlasan} ulasan</span>
                         </div>
-                        {guru.ulasan.length === 0 ? (
+                        <div style={{ padding: "16px", borderRadius: 14, background: "#F8FAFC", border: "1px solid #E6F1FB", marginBottom: 18 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "#042C53", marginBottom: 10 }}>Tulis Ulasan</div>
+
+                            <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Rating</label>
+                            <select
+                                value={reviewRating}
+                                onChange={(e) => setReviewRating(e.target.value)}
+                                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #B5D4F4", marginBottom: 10, fontFamily: "inherit" }}
+                            >
+                                <option value={5}>5 - Sangat Baik</option>
+                                <option value={4}>4 - Baik</option>
+                                <option value={3}>3 - Cukup</option>
+                                <option value={2}>2 - Kurang</option>
+                                <option value={1}>1 - Buruk</option>
+                            </select>
+
+                            <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Komentar</label>
+                            <textarea
+                                value={reviewComment}
+                                onChange={(e) => setReviewComment(e.target.value)}
+                                placeholder="Tulis pengalaman belajar kamu dengan guru ini..."
+                                rows={4}
+                                style={{ width: "100%", padding: "11px 12px", borderRadius: 10, border: "1px solid #B5D4F4", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 10 }}
+                            />
+
+                            {reviewError && <div style={{ fontSize: 12, color: "#dc2626", fontWeight: 700, marginBottom: 8 }}>{reviewError}</div>}
+                            {reviewSuccess && <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 700, marginBottom: 8 }}>{reviewSuccess}</div>}
+
+                            <button
+                                onClick={handleSubmitReview}
+                                disabled={reviewLoading}
+                                style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "none", background: reviewLoading ? "#94a3b8" : "#185FA5", color: "#fff", fontSize: 14, fontWeight: 800, cursor: reviewLoading ? "not-allowed" : "pointer", fontFamily: "inherit" }}
+                            >
+                                {reviewLoading ? "Mengirim..." : "Kirim Ulasan"}
+                            </button>
+                        </div>
+
+                        {(firebaseReviews.length ? firebaseReviews : guru.ulasan).length === 0 ? (
                             <p style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "16px 0" }}>Belum ada ulasan.</p>
-                        ) : guru.ulasan.map((u, i) => (
-                            <div key={u.id} style={{ padding: "16px 0", borderBottom: i < guru.ulasan.length - 1 ? "1px solid #E6F1FB" : "none" }}>
+                        ) : (firebaseReviews.length ? firebaseReviews : guru.ulasan).map((u, i) => (
+                            <div key={u.id} style={{ padding: "16px 0", borderBottom: i < (firebaseReviews.length ? firebaseReviews : guru.ulasan).length - 1 ? "1px solid #E6F1FB" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                                     <div style={s.avatarBox(getWarna(i).bg, getWarna(i).text, 34)}>
-                                        {getInisial(u.nama)}
+                                        {getInisial(u.studentName || u.nama)}
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53" }}>{u.nama}</div>
-                                        <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{u.waktu}</div>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: "#042C53" }}>{u.studentName || u.nama}</div>
+                                        <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{u.createdAt?.toDate ? u.createdAt.toDate().toLocaleString('id-ID') : (u.waktu || 'Baru saja')}</div>
                                     </div>
-                                    <div style={{ marginLeft: "auto" }}><Bintang jumlah={u.bintang} /></div>
+                                    <div style={{ marginLeft: "auto" }}><Bintang jumlah={u.rating || u.bintang} /></div>
                                 </div>
-                                <p style={{ fontSize: 13, color: "#555", lineHeight: 1.65 }}>{u.komentar}</p>
+                                <p style={{ fontSize: 13, color: "#555", lineHeight: 1.65 }}>{u.comment || u.komentar}</p>
                             </div>
                         ))}
                     </div>
                 </div>
 
                 {/* KOLOM KANAN */}
-                <BookingCard guru={guru} isFavorit={isFavorit} onToggleFavorit={handleToggleFavorit} />
+                <BookingCard guru={guru} isFavorit={isFavorit} onToggleFavorit={handleToggleFavorit} onChatGuru={handleChatGuru} />
 
             </div>
         </div>
     );
 }
+
+
+
+
+
+

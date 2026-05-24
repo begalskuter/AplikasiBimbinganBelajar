@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { addAdminNotification, addActivityLog } from "../services/firestoreService";
 
 const inputStyle = {
   width: "100%",
@@ -344,6 +345,29 @@ function RegisterForm({ onRegisterSuccess }) {
       await api.post("/auth/register-guru", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      addAdminNotification({
+        title: "Pendaftaran Guru Baru",
+        message: `${form.namaLengkap} baru saja mendaftar sebagai guru dan menunggu verifikasi admin.`,
+        teacherName: form.namaLengkap,
+        teacherId: form.email,
+      }).then(() => {
+        console.log("Notifikasi admin berhasil masuk ke Firestore.");
+      }).catch((firebaseError) => {
+        console.error("Gagal membuat notifikasi admin:", firebaseError);
+      });
+      addActivityLog({
+        type: "teacher_register",
+        title: "Guru Baru Mendaftar",
+        description: `${form.namaLengkap} mendaftar sebagai guru baru dan menunggu verifikasi admin.`,
+        actorRole: "guru",
+        actorName: form.namaLengkap,
+        relatedId: form.email,
+      }).then(() => {
+        console.log("Activity log pendaftaran guru berhasil masuk ke Firestore.");
+      }).catch((firebaseError) => {
+        console.error("Gagal membuat activity log pendaftaran guru:", firebaseError);
+      });
+
       localStorage.setItem("registration_pending", "true");
       onRegisterSuccess();
     } catch (err) {
@@ -671,3 +695,6 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
     </>
   );
 }
+
+
+

@@ -1,27 +1,254 @@
-*.log
-.DS_Store
+# =========================================================
+# SynauApp / AplikasiBimbinganBelajar
+# Laravel + React/Vite + Firebase + Google Cloud
+# =========================================================
+
+
+# =========================
+# ENV / SECRET FILES
+# =========================
 .env
-.env.backup
-.env.production
-.phpactor.json
+.env.*
+!.env.example
+
+*.env
+*.local
+*.secret
+*.secrets
+*.key
+*.pem
+*.p12
+*.json.backup
+
+auth.json
+service-account*.json
+firebase-service-account*.json
+gcp-service-account*.json
+google-credentials*.json
+application_default_credentials.json
+
+
+# =========================
+# LOGS
+# =========================
+*.log
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+
+# =========================
+# NODE / REACT / VITE
+# =========================
+node_modules
+**/node_modules
+
+dist
+**/dist
+
+build
+**/build
+
+.cache
+.parcel-cache
+.vite
+**/.vite
+
+coverage
+**/coverage
+
+.npm
+.pnpm-store
+.yarn
+.yarn-cache
+
+*.tsbuildinfo
+
+
+# =========================
+# LARAVEL / PHP
+# =========================
+vendor
+**/vendor
+
 .phpunit.result.cache
-/.codex
-/.cursor/
-/.idea
-/.nova
+.phpactor.json
+.phpunit.cache
 /.phpunit.cache
-/.vscode
-/.zed
-/auth.json
-/node_modules
+
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+
 /public/build
-/public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+/public/fonts-manifest.dev.json
+
 /storage/*.key
 /storage/pail
-/vendor
-_ide_helper.php
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*
+
+!/storage/framework/cache/.gitignore
+!/storage/framework/sessions/.gitignore
+!/storage/framework/testing/.gitignore
+!/storage/framework/views/.gitignore
+!/storage/logs/.gitignore
+
+/bootstrap/cache/*.php
+/bootstrap/cache/*.json
+
+
+# =========================
+# COMPOSER
+# =========================
+composer.phar
+
+
+# =========================
+# FIREBASE
+# =========================
+.firebase
+.firebase/*
+.firebaserc.local
+
+firebase-export-*
+firestore_export
+firestore-debug.log
+firebase-debug.log
+database-debug.log
+
+# Jangan ignore firebase.json dan .firebaserc utama
+# karena biasanya dibutuhkan untuk deploy.
+# firebase.json
+# .firebaserc
+
+
+# =========================
+# GOOGLE CLOUD / GCLOUD
+# =========================
+.gcloud
+gcloud-config
+cloud_sql_proxy
+*.db
+
+
+# =========================
+# DOCKER
+# =========================
+.docker
+docker-compose.override.yml
+docker-compose.local.yml
+
+
+# =========================
+# IDE / EDITOR
+# =========================
+.vscode
+.idea
+.cursor
+.codex
+.nova
+.zed
+
+*.sublime-project
+*.sublime-workspace
+
+
+# =========================
+# OS FILES
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+
+# =========================
+# WINDOWS / POWERSHELL TEMP
+# =========================
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.old
+
+*.ps1.bak
+
+
+# =========================
+# TEST / CACHE
+# =========================
+.cache
+tmp
+temp
+
+.phpunit.cache
+coverage
+.nyc_output
+
+
+# =========================
+# DEPLOY OUTPUT
+# =========================
+.deploy
+release
+releases
+
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+
+# =========================
+# HOMESTEAD / LOCAL DEV
+# =========================
 Homestead.json
 Homestead.yaml
-Thumbs.db
+
+
+# =========================
+# DATABASE LOCAL
+# =========================
+*.sqlite
+*.sqlite3
+database/*.sqlite
+database/*.sqlite3
+
+
+# =========================
+# MISC
+# =========================
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
