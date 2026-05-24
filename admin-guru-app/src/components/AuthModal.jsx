@@ -125,7 +125,7 @@ function LoginForm({ onClose }) {
       // Redirect otomatis berdasarkan role — tanpa pemilihan role manual
       const role = user?.role;
       if (role === "admin") {
-        navigate("/admin/dashboard");
+        navigate("/dashboardadmin");
       } else if (role === "guru") {
         navigate("/dashboardguru");
       } else {
