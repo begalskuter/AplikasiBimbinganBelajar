@@ -11,25 +11,10 @@ const mockKelas = [
   { id: 6, guru: 'Hendra Wijaya', siswa: 'Lina Marlina', mataPelajaran: 'Matematika SMP', hari: ['Senin'], waktu: '09:00', paket: 'Mingguan', status: 'aktif' },
 ];
 
-const mockJadwalPending = [
-  { id: 1, guru: 'Maya Anggraeni', mataPelajaran: 'Biologi SMA', hariDiajukan: ['Senin', 'Rabu'], waktu: '14:00 - 15:30', tanggalAjuan: '2026-05-22', status: 'pending' },
-  { id: 2, guru: 'Fajar Setiawan', mataPelajaran: 'Sejarah SMA', hariDiajukan: ['Kamis'], waktu: '10:00 - 11:30', tanggalAjuan: '2026-05-21', status: 'pending' },
-  { id: 3, guru: 'Hendra Wijaya', mataPelajaran: 'Matematika SMP', hariDiajukan: ['Sabtu'], waktu: '08:00 - 09:30', tanggalAjuan: '2026-05-20', status: 'pending' },
-];
-
 export default function KelasJadwal() {
   const [activeTab, setActiveTab] = useState('kelas');
   const [kelas] = useState(mockKelas);
-  const [jadwalPending, setJadwalPending] = useState(mockJadwalPending);
   const [selectedDay, setSelectedDay] = useState(null);
-
-  const handleApproveJadwal = (id) => {
-    setJadwalPending(jadwalPending.map(j => j.id === id ? { ...j, status: 'approved' } : j));
-  };
-
-  const handleRejectJadwal = (id) => {
-    setJadwalPending(jadwalPending.map(j => j.id === id ? { ...j, status: 'rejected' } : j));
-  };
 
   const kelasOnDay = selectedDay ? kelas.filter(k => k.hari.includes(selectedDay) && k.status === 'aktif') : [];
 
@@ -41,16 +26,15 @@ export default function KelasJadwal() {
           Kelas & <span style={{ color: '#185FA5' }}>Jadwal</span>
         </h1>
         <p style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500, margin: 0 }}>
-          Kelola kelas aktif dan setujui jadwal yang diajukan guru
+          Lihat kelas aktif dan jadwal yang dibuat oleh guru
         </p>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 22 }}>
         {[
           { label: 'Kelas Aktif', value: kelas.filter(k => k.status === 'aktif').length, accent: '#16a34a', icon: 'ti-book' },
           { label: 'Kelas Selesai', value: kelas.filter(k => k.status === 'selesai').length, accent: '#64748b', icon: 'ti-check' },
-          { label: 'Jadwal Menunggu', value: jadwalPending.filter(j => j.status === 'pending').length, accent: '#d97706', icon: 'ti-clock' },
         ].map(s => (
           <div key={s.label} style={{
             background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
@@ -69,7 +53,7 @@ export default function KelasJadwal() {
 
       {/* Tab Switcher */}
       <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 3, marginBottom: 18, width: 'fit-content' }}>
-        {[{ key: 'kelas', label: 'Daftar Kelas' }, { key: 'jadwal', label: 'Persetujuan Jadwal' }, { key: 'calendar', label: 'Kalender' }].map(t => (
+        {[{ key: 'kelas', label: 'Daftar Kelas' }, { key: 'calendar', label: 'Kalender Jadwal' }].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
             padding: '9px 18px', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600,
             cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -125,82 +109,6 @@ export default function KelasJadwal() {
         </div>
       )}
 
-      {/* TAB: Persetujuan Jadwal */}
-      {activeTab === 'jadwal' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {jadwalPending.length === 0 ? (
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 56, textAlign: 'center', color: '#cbd5e1' }}>
-              <i className="ti ti-calendar-check" style={{ fontSize: 40, display: 'block', marginBottom: 8 }} />
-              <div style={{ fontSize: 14 }}>Tidak ada jadwal yang menunggu persetujuan</div>
-            </div>
-          ) : jadwalPending.map(j => (
-            <div key={j.id} style={{
-              background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
-              padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 18,
-              transition: 'all 0.2s',
-              opacity: j.status !== 'pending' ? 0.6 : 1,
-            }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: 12,
-                background: j.status === 'approved' ? '#F0FDF4' : j.status === 'rejected' ? '#FEF2F2' : '#FFFBEB',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <i className={`ti ${j.status === 'approved' ? 'ti-check' : j.status === 'rejected' ? 'ti-x' : 'ti-clock'}`}
-                  style={{ fontSize: 22, color: j.status === 'approved' ? '#16a34a' : j.status === 'rejected' ? '#dc2626' : '#d97706' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{j.guru}</div>
-                <div style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <i className="ti ti-book" style={{ fontSize: 13 }} /> {j.mataPelajaran}
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <i className="ti ti-calendar" style={{ fontSize: 13 }} /> {j.hariDiajukan.join(', ')}
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <i className="ti ti-clock" style={{ fontSize: 13 }} /> {j.waktu}
-                  </span>
-                </div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                  Diajukan: {new Date(j.tanggalAjuan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </div>
-              </div>
-              {j.status === 'pending' ? (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => handleApproveJadwal(j.id)} style={{
-                    padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none',
-                    borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                    fontFamily: "'Plus Jakarta Sans', sans-serif", display: 'flex', alignItems: 'center', gap: 4,
-                    transition: 'all 0.15s',
-                  }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#15803d'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = '#16a34a'}
-                  >
-                    <i className="ti ti-check" style={{ fontSize: 14 }} /> Setujui
-                  </button>
-                  <button onClick={() => handleRejectJadwal(j.id)} style={{
-                    padding: '8px 16px', background: '#fff', color: '#dc2626',
-                    border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                    cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    transition: 'all 0.15s',
-                  }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#FEF2F2'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
-                  >Tolak</button>
-                </div>
-              ) : (
-                <span style={{
-                  background: j.status === 'approved' ? '#F0FDF4' : '#FEF2F2',
-                  color: j.status === 'approved' ? '#16a34a' : '#dc2626',
-                  padding: '4px 12px', borderRadius: 16, fontSize: 11, fontWeight: 700,
-                  border: `1px solid ${j.status === 'approved' ? '#bbf7d0' : '#fecaca'}`,
-                }}>{j.status === 'approved' ? 'Disetujui' : 'Ditolak'}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* TAB: Calendar */}
       {activeTab === 'calendar' && (

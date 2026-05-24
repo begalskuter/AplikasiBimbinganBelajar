@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const mockSiswa = [
+const initialMockSiswa = [
   { id: 1, name: 'Budi Santoso', email: 'budi@email.com', kota: 'Yogyakarta', tanggalDaftar: '2026-02-10', totalBooking: 5, guruFavorit: 3, totalBayar: 2150000, status: 'aktif' },
   { id: 2, name: 'Siti Aminah', email: 'siti.a@email.com', kota: 'Semarang', tanggalDaftar: '2026-02-15', totalBooking: 3, guruFavorit: 2, totalBayar: 1500000, status: 'aktif' },
   { id: 3, name: 'Andi Maulana', email: 'andi.m@email.com', kota: 'Jakarta', tanggalDaftar: '2026-03-01', totalBooking: 8, guruFavorit: 5, totalBayar: 4200000, status: 'aktif' },
@@ -14,11 +14,25 @@ const mockSiswa = [
 ];
 
 export default function DataSiswa() {
+  const [siswaList, setSiswaList] = useState(initialMockSiswa);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedSiswa, setSelectedSiswa] = useState(null);
 
-  const filtered = mockSiswa.filter(s => {
+  const handleToggleStatus = (id) => {
+    setSiswaList(prev => prev.map(s => {
+      if (s.id === id) {
+        const newStatus = s.status === 'aktif' ? 'nonaktif' : 'aktif';
+        if (selectedSiswa && selectedSiswa.id === id) {
+          setSelectedSiswa({ ...s, status: newStatus });
+        }
+        return { ...s, status: newStatus };
+      }
+      return s;
+    }));
+  };
+
+  const filtered = siswaList.filter(s => {
     const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.kota.toLowerCase().includes(searchQuery.toLowerCase());
@@ -26,7 +40,7 @@ export default function DataSiswa() {
     return matchSearch && matchFilter;
   });
 
-  const totalBayarAll = mockSiswa.reduce((s, v) => s + v.totalBayar, 0);
+  const totalBayarAll = siswaList.reduce((s, v) => s + v.totalBayar, 0);
 
   return (
     <div>
@@ -43,9 +57,9 @@ export default function DataSiswa() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
         {[
-          { label: 'Total Siswa', value: mockSiswa.length, accent: '#7c3aed', icon: 'ti-school' },
-          { label: 'Siswa Aktif', value: mockSiswa.filter(s => s.status === 'aktif').length, accent: '#16a34a', icon: 'ti-user-check' },
-          { label: 'Total Booking', value: mockSiswa.reduce((s, v) => s + v.totalBooking, 0), accent: '#185FA5', icon: 'ti-calendar-event' },
+          { label: 'Total Siswa', value: siswaList.length, accent: '#7c3aed', icon: 'ti-school' },
+          { label: 'Siswa Aktif', value: siswaList.filter(s => s.status === 'aktif').length, accent: '#16a34a', icon: 'ti-user-check' },
+          { label: 'Total Booking', value: siswaList.reduce((s, v) => s + v.totalBooking, 0), accent: '#185FA5', icon: 'ti-calendar-event' },
           { label: 'Total Pendapatan', value: `Rp ${(totalBayarAll / 1000000).toFixed(1)}jt`, accent: '#d97706', icon: 'ti-coin' },
         ].map(s => (
           <div key={s.label} style={{
@@ -211,11 +225,26 @@ export default function DataSiswa() {
               ))}
             </div>
 
-            <button onClick={() => setSelectedSiswa(null)} style={{
-              width: '100%', padding: '12px', background: '#f1f5f9', color: '#475569',
-              border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}>Tutup</button>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => setSelectedSiswa(null)} style={{
+                flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569',
+                border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.2s'
+              }}>Tutup</button>
+              <button 
+                onClick={() => handleToggleStatus(selectedSiswa.id)} 
+                style={{
+                  flex: 1, padding: '12px', 
+                  background: selectedSiswa.status === 'aktif' ? '#FEF2F2' : '#F0FDF4', 
+                  color: selectedSiswa.status === 'aktif' ? '#dc2626' : '#16a34a',
+                  border: `1px solid ${selectedSiswa.status === 'aktif' ? '#fecaca' : '#bbf7d0'}`, 
+                  borderRadius: 10, fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s'
+                }}
+              >
+                {selectedSiswa.status === 'aktif' ? 'Nonaktifkan Siswa' : 'Aktifkan Siswa'}
+              </button>
+            </div>
           </div>
         </div>
       )}
