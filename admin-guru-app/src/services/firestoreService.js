@@ -143,12 +143,14 @@ export const listenChats = (role, userId, callback) => {
 export const listenMessages = (chatId, callback) => {
   if (!chatId) return () => {};
   try {
-    const q = query(
-      collection(db, "chats", chatId, "messages"),
-      orderBy("created_at", "asc")
-    );
+    const q = query(collection(db, "chats", chatId, "messages"));
     return onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      data.sort((a, b) => {
+        const timeA = a.created_at?.toMillis?.() || 0;
+        const timeB = b.created_at?.toMillis?.() || 0;
+        return timeA - timeB;
+      });
       callback(data);
     }, (error) => { console.warn("Error listening messages", error); });
   } catch (error) { console.warn("Failed messages listener", error); return () => {}; }

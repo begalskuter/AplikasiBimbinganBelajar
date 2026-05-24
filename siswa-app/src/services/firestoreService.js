@@ -143,12 +143,14 @@ export const listenChats = (role, userId, callback) => {
 export const listenMessages = (chatId, callback) => {
   if (!chatId) return () => {};
   try {
-    const q = query(
-      collection(db, "chats", chatId, "messages"),
-      orderBy("created_at", "asc")
-    );
+    const q = query(collection(db, "chats", chatId, "messages"));
     return onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      data.sort((a, b) => {
+        const timeA = a.created_at?.toMillis?.() || 0;
+        const timeB = b.created_at?.toMillis?.() || 0;
+        return timeA - timeB;
+      });
       callback(data);
     }, (error) => { console.warn("Error listening messages", error); });
   } catch (error) { console.warn("Failed messages listener", error); return () => {}; }
@@ -169,12 +171,10 @@ export const sendMessage = async (chatId, senderId, senderRole, text) => {
       last_message_time: serverTimestamp()
     };
     if (senderRole === "guru") {
-      // updateData.unread_siswa = increment(1); // idealnya pakai increment, tapi untuk sederhana pakai nilai hardcode 1 atau via cloud function.
-      // Firebase web SDK support increment: import { increment } from "firebase/firestore";
-      // Namun untuk meminimalisir error import, kita biarkan logic sederhana dulu atau pakai import jika diizinkan.
+      updateData.unread_siswa = 1;
+    } else {
+      updateData.unread_guru = 1;
     }
-    // Karena kita tidak mengimport increment di atas, kita abaikan dulu unread increment complex,
-    // cukup gunakan update yang sederhana (atau import increment dari firebase).
     
     await setDoc(chatRef, updateData, { merge: true });
     return true;
