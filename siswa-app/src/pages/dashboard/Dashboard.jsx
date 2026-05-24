@@ -26,12 +26,19 @@ const s = {
 };
 
 // ── Navbar — avatar & nama bisa diklik ke /profile ──
-function Navbar({ siswa, onLogout, onProfil }) {
+function Navbar({ siswa, onLogout, onProfil, onChat }) {
     const inisial = siswa?.nama_panggilan?.[0]?.toUpperCase() ?? siswa?.name?.[0]?.toUpperCase() ?? "S";
     return (
         <nav style={s.navbar}>
             <div style={s.logo}>Syn<span style={{ color: "#378ADD" }}>au</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <button
+                    onClick={onChat}
+                    style={{ background: "#E6F1FB", border: "1px solid #B5D4F4", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 700, color: "#185FA5", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                    Chat
+                </button>
+
                 {/* Klik nama atau avatar → ke halaman profil */}
                 <div
                     onClick={onProfil}
@@ -230,7 +237,8 @@ export default function Dashboard() {
             <Navbar
                 siswa={siswa}
                 onLogout={handleLogout}
-                onProfil={() => navigate('/profile')}   // ← arahkan ke profil
+                onProfil={() => navigate('/profile')}
+                onChat={() => navigate('/chat')}
             />
             <div style={s.container}>
                 <div style={{ marginBottom: 28 }}>
@@ -273,3 +281,6 @@ export default function Dashboard() {
         </div>
     );
 }
+
+
+
