@@ -1,25 +1,52 @@
+import { useState, useEffect } from 'react';
+import api from '../../services/api';
+
+const formatRupiah = (value) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+
+const POTONGAN_PLATFORM = 10;
+
 export default function LaporanAdmin() {
-  const summaryStats = [
-    { label: 'Total Pendapatan', value: 'Rp 42.500.000', growth: '+12%', isPositive: true },
-    { label: 'Pendaftaran Guru', value: '45', growth: '+8%', isPositive: true },
-    { label: 'Siswa Baru', value: '128', growth: '+15%', isPositive: true },
-    { label: 'Tingkat Churn', value: '2.4%', growth: '-0.5%', isPositive: true }, // Lower churn is positive
-  ];
+  const [data, setData] = useState({
+    summaryStats: [],
+    monthlyData: [],
+    topGurus: [],
+  });
+  const [loading, setLoading] = useState(true);
 
-  const monthlyData = [
-    { month: 'Jan', pendapatan: 25 },
-    { month: 'Feb', pendapatan: 28 },
-    { month: 'Mar', pendapatan: 32 },
-    { month: 'Apr', pendapatan: 35 },
-    { month: 'Mei', pendapatan: 42 },
-  ];
-  const maxPendapatan = Math.max(...monthlyData.map(d => d.pendapatan));
+  useEffect(() => {
+    const fetchLaporan = async () => {
+      try {
+        const response = await api.get('/admin/laporan');
+        setData(response.data);
+      } catch (error) {
+        console.error('Gagal ambil laporan:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLaporan();
+  }, []);
 
-  const topGurus = [
-    { rank: 1, name: 'Dewi Puspitasari', rating: 4.9, siswa: 18, mapel: 'Matematika' },
-    { rank: 2, name: 'Ahmad Ridwan', rating: 4.8, siswa: 15, mapel: 'Fisika' },
-    { rank: 3, name: 'Siti Nurhaliza', rating: 4.7, siswa: 12, mapel: 'Kimia' },
-  ];
+  if (loading) {
+    return <div style={{ padding: 24, textAlign: 'center' }}>Memuat laporan...</div>;
+  }
+
+  const { summaryStats, monthlyData, topGurus } = data;
+  const maxPendapatan = monthlyData.length
+    ? Math.max(...monthlyData.map(d => d.pendapatan))
+    : 1;
+
+  // Hitung total kotor dari summaryStats (cari field pendapatan/kotor)
+  // lalu ambil 10%-nya sebagai pendapatan sistem
+  const totalKotor = summaryStats.find(s =>
+    s.label?.toLowerCase().includes('pendapatan') ||
+    s.label?.toLowerCase().includes('kotor')
+  )?.rawValue ?? null;
+
+  const pendapatanSistem = totalKotor !== null
+    ? Math.round(totalKotor * POTONGAN_PLATFORM / 100)
+    : null;
 
   return (
     <div>
@@ -49,20 +76,37 @@ export default function LaporanAdmin() {
 
       {/* Summary Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
-        {summaryStats.map(stat => (
-          <div key={stat.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '20px' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>{stat.label}</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>{stat.value}</div>
-              <span style={{
-                fontSize: 11, fontWeight: 700,
-                color: stat.isPositive ? '#16a34a' : '#dc2626',
-                background: stat.isPositive ? '#F0FDF4' : '#FEF2F2',
-                padding: '2px 6px', borderRadius: 4,
-              }}>{stat.growth}</span>
+        {summaryStats.map((stat, idx) => {
+          // Deteksi kartu pendapatan — ganti value-nya jadi 10% (pendapatan sistem)
+          const isPendapatan =
+            stat.label?.toLowerCase().includes('pendapatan') ||
+            stat.label?.toLowerCase().includes('kotor');
+
+          const displayValue = isPendapatan && stat.rawValue != null
+            ? formatRupiah(Math.round(stat.rawValue * POTONGAN_PLATFORM / 100))
+            : stat.value;
+
+          const displayLabel = isPendapatan
+            ? `Pendapatan Sistem (${POTONGAN_PLATFORM}%)`
+            : stat.label;
+
+          return (
+            <div key={idx} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '20px' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>{displayLabel}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                <div style={{ fontSize: isPendapatan ? 16 : 24, fontWeight: 800, color: isPendapatan ? '#dc2626' : '#0f172a' }}>
+                  {displayValue}
+                </div>
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  color: stat.isPositive ? '#16a34a' : '#dc2626',
+                  background: stat.isPositive ? '#F0FDF4' : '#FEF2F2',
+                  padding: '2px 6px', borderRadius: 4,
+                }}>{stat.growth}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Two Column Layout */}
@@ -74,8 +118,8 @@ export default function LaporanAdmin() {
             Pertumbuhan Pendapatan (Juta Rp)
           </h3>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 20, height: 200, padding: '0 10px' }}>
-            {monthlyData.map((d) => (
-              <div key={d.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            {monthlyData.map((d, idx) => (
+              <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#0891b2' }}>{d.pendapatan}</div>
                 <div style={{
                   width: '100%', maxWidth: 48, borderRadius: '6px 6px 2px 2px',

@@ -151,6 +151,7 @@ export default function DetailGuru() {
                     terverifikasi: data.terverifikasi,
                     bio: data.bio,
                     jadwal: data.jadwal ?? [],
+                    slot_jam_per_hari: data.slot_jam_per_hari ?? {}, // ← tambah ini
                     harga: data.harga ?? { mingguan: 0, bulanan: 0, sesiPerMinggu: 2, menitPerSesi: 90 },
                     ulasan: data.ulasan ?? [],
                     warnaBg: getWarna(data.id).bg,

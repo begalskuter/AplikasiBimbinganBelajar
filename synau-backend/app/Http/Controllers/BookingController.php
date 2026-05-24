@@ -11,29 +11,34 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'guru_id'       => 'required|exists:gurus,id',
-            'paket'         => 'required|in:mingguan,bulanan',
-            'hari_dipilih'  => 'required|array|min:1',
-            'waktu_mulai'   => 'required|array',
-            'tanggal_mulai' => 'required|date',
-            'catatan'       => 'nullable|string',
+            'guru_id'        => 'required|exists:gurus,id',
+            'paket'          => 'required|in:mingguan,bulanan',
+            'mata_pelajaran' => 'required|string',
+            'hari_dipilih'   => 'required|array|min:1',
+            'waktu_mulai'    => 'required|array',
+            'tanggal_mulai'  => 'required|date',
+            'catatan'        => 'nullable|string',
         ]);
 
-        $guru = Guru::findOrFail($request->guru_id);
+        $guru  = Guru::findOrFail($request->guru_id);
         $harga = $request->paket === 'mingguan'
             ? $guru->harga_mingguan
             : $guru->harga_bulanan;
 
         $booking = Booking::create([
-            'siswa_id'      => $request->user()->id,
-            'guru_id'       => $request->guru_id,
-            'paket'         => $request->paket,
-            'hari_dipilih'  => $request->hari_dipilih,
-            'waktu_mulai'   => $request->waktu_mulai,
-            'tanggal_mulai' => $request->tanggal_mulai,
-            'catatan'       => $request->catatan,
-            'status'        => 'pending',
-            'total_harga'   => $harga,
+            'siswa_id'          => $request->user()->id,
+            'guru_id'           => $request->guru_id,
+            'paket'             => $request->paket,
+            'mata_pelajaran'    => $request->mata_pelajaran,
+            'hari_dipilih'      => $request->hari_dipilih,
+            'waktu_mulai'       => $request->waktu_mulai,
+            'tanggal_mulai'     => $request->tanggal_mulai,
+            'catatan'           => $request->catatan,
+            'status'            => 'pending',
+            // Siswa sudah bayar QRIS sebelum submit — langsung paid
+            'status_pembayaran' => 'paid',
+            'paid_at'           => now(),
+            'total_harga'       => $harga,
         ]);
 
         return response()->json([
@@ -50,16 +55,18 @@ class BookingController extends Controller
             ->get()
             ->map(function ($b) {
                 return [
-                    'id'            => $b->id,
-                    'guru_id'       => $b->guru_id,
-                    'paket'         => $b->paket,
-                    'hari_dipilih'  => $b->hari_dipilih,
-                    'waktu_mulai'   => $b->waktu_mulai,
-                    'tanggal_mulai' => $b->tanggal_mulai?->format('Y-m-d'),
-                    'catatan'       => $b->catatan,
-                    'status'        => $b->status,
-                    'total_harga'   => $b->total_harga,
-                    'guru'          => [
+                    'id'                => $b->id,
+                    'guru_id'           => $b->guru_id,
+                    'paket'             => $b->paket,
+                    'mata_pelajaran'    => $b->mata_pelajaran,
+                    'hari_dipilih'      => $b->hari_dipilih,
+                    'waktu_mulai'       => $b->waktu_mulai,
+                    'tanggal_mulai'     => $b->tanggal_mulai?->format('Y-m-d'),
+                    'catatan'           => $b->catatan,
+                    'status'            => $b->status,
+                    'status_pembayaran' => $b->status_pembayaran,
+                    'total_harga'       => $b->total_harga,
+                    'guru'              => [
                         'id'    => $b->guru->id,
                         'nama'  => $b->guru->user->name,
                         'mapel' => $b->guru->mata_pelajaran[0] ?? '',

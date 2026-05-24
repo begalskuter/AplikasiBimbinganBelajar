@@ -19,13 +19,12 @@ export default function Overview({ guruData, bookings }) {
   const pendingCount = (bookings || []).filter(b => b.status === 'pending').length;
   const confirmedCount = (bookings || []).filter(b => b.status === 'confirmed').length;
 
-  // Get slots for today from per-day data
   const slotPerHari = guruData?.slot_jam_per_hari || {};
   const todaySchedule = (guruData?.jadwal || []).includes(todayName);
-  const todaySlots = todaySchedule ? (slotPerHari[todayName] || guruData?.slot_jam || []) : [];
+  const todaySlots = todaySchedule ? (slotPerHari[todayName] || []) : [];
   const recentBookings = (bookings || []).slice(0, 5);
 
-  // Selected day — only show slots that have booked students
+  // Booking yang dipilih berdasarkan hari
   const selectedDayBookings = selectedDay
     ? (bookings || []).filter(b => (b.hari_dipilih || []).includes(selectedDay))
     : [];
@@ -110,7 +109,7 @@ export default function Overview({ guruData, bookings }) {
         ))}
       </div>
 
-      {/* Two Column Layout */}
+      {/* Two Column Layout: Jadwal Hari Ini & Booking Terbaru */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 22 }}>
         {/* Today's Schedule */}
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 22 }}>
@@ -188,7 +187,7 @@ export default function Overview({ guruData, bookings }) {
         </div>
       </div>
 
-      {/* Weekly Schedule with clickable days */}
+      {/* Jadwal Mengajar Minggu Ini (interaktif) */}
       <div style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
         borderRadius: 16, padding: '22px 26px', color: '#fff',
@@ -225,7 +224,7 @@ export default function Overview({ guruData, bookings }) {
           </div>
         </div>
 
-        {/* Detail — only slots WITH booked students */}
+        {/* Detail slot dengan siswa yang sudah booking */}
         {selectedDay && selectedDayBookings.length > 0 && (
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 16 }}>
             <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
