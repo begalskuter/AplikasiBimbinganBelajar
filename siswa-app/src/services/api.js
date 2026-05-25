@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api',
+    baseURL: 'https://synau-backend-579679620696.us-central1.run.app/api',
     headers: { 'Content-Type': 'application/json' }
 })
 
