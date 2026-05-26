@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\GcsFileService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
 
 class RegisterGuruController extends Controller
 {
-    public function register(Request $request)
+    public function register(Request $request, GcsFileService $gcs)
     {
         $request->validate([
             'name'                  => 'required|string|max:255',
@@ -29,17 +29,16 @@ class RegisterGuruController extends Controller
             'ktp'                   => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'ijazah'                => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ], [
-            'email.unique'              => 'Email sudah terdaftar.',
-            'cv.required'               => 'CV wajib diupload.',
-            'ktp.required'              => 'KTP wajib diupload.',
-            'ijazah.required'           => 'Ijazah/Surat Aktif Kuliah wajib diupload.',
-            'password_confirmation.same'=> 'Konfirmasi password tidak cocok.',
+            'email.unique'               => 'Email sudah terdaftar.',
+            'cv.required'                => 'CV wajib diupload.',
+            'ktp.required'               => 'KTP wajib diupload.',
+            'ijazah.required'            => 'Ijazah/Surat Aktif Kuliah wajib diupload.',
+            'password_confirmation.same' => 'Konfirmasi password tidak cocok.',
         ]);
 
-        // Simpan file dokumen ke storage/app/public/dokumen-guru/
-        $cvPath     = $request->file('cv')->store('dokumen-guru/cv', 'public');
-        $ktpPath    = $request->file('ktp')->store('dokumen-guru/ktp', 'public');
-        $ijazahPath = $request->file('ijazah')->store('dokumen-guru/ijazah', 'public');
+        $cvUrl     = $gcs->upload($request->file('cv'), 'dokumen-guru/cv');
+        $ktpUrl    = $gcs->upload($request->file('ktp'), 'dokumen-guru/ktp');
+        $ijazahUrl = $gcs->upload($request->file('ijazah'), 'dokumen-guru/ijazah');
 
         $user = User::create([
             'name'           => $request->name,
@@ -53,13 +52,11 @@ class RegisterGuruController extends Controller
             'kecamatan'      => $request->kecamatan,
             'kota'           => $request->kota,
             'provinsi'       => $request->provinsi,
-            'role'           => 'guru',          // role otomatis guru
-            // Simpan path dokumen — tambahkan kolom ini ke tabel users
-            // atau buat tabel terpisah dokumen_guru kalau mau lebih rapi
-            'cv_url'         => Storage::url($cvPath),
-            'ktp_url'        => Storage::url($ktpPath),
-            'ijazah_url'     => Storage::url($ijazahPath),
-            'is_verified'    => false,           // menunggu verifikasi admin
+            'role'           => 'guru',
+            'cv_url'         => $cvUrl,
+            'ktp_url'        => $ktpUrl,
+            'ijazah_url'     => $ijazahUrl,
+            'is_verified'    => false,
         ]);
 
         return response()->json([

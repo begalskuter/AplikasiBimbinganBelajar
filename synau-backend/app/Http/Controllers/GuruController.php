@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Guru;
+use App\Services\GcsFileService;
 use Illuminate\Http\Request;
 
 class GuruController extends Controller
@@ -103,28 +104,33 @@ class GuruController extends Controller
         return $data;
     }
 
-    public function uploadDokumen(Request $request, $id)
+    public function uploadDokumen(Request $request, $id, GcsFileService $gcs)
     {
         $request->validate([
-            'cv'     => 'nullable|file|mimes:pdf,doc,docx|max:2048',
-            'ktp'    => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'ijazah' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'cv'     => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+            'ktp'    => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'ijazah' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         $guru = Guru::findOrFail($id);
 
         if ($request->hasFile('cv')) {
-            $guru->cv_path = $request->file('cv')->store('dokumen-guru/cv', 'public');
+            $guru->cv_path = $gcs->upload($request->file('cv'), 'dokumen-guru/cv');
         }
+
         if ($request->hasFile('ktp')) {
-            $guru->ktp_path = $request->file('ktp')->store('dokumen-guru/ktp', 'public');
+            $guru->ktp_path = $gcs->upload($request->file('ktp'), 'dokumen-guru/ktp');
         }
+
         if ($request->hasFile('ijazah')) {
-            $guru->ijazah_path = $request->file('ijazah')->store('dokumen-guru/ijazah', 'public');
+            $guru->ijazah_path = $gcs->upload($request->file('ijazah'), 'dokumen-guru/ijazah');
         }
 
         $guru->save();
 
-        return response()->json(['message' => 'Dokumen berhasil diupload', 'guru' => $guru]);
+        return response()->json([
+            'message' => 'Dokumen berhasil diupload ke Cloud Storage',
+            'guru' => $guru,
+        ]);
     }
 }
